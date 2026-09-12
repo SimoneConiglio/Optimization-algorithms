@@ -82,6 +82,11 @@ and this project adheres to
   order of the variation of the objective rather than an arbitrarily large
   number, and which the benchmarks now sweep over the range where it is worth
   using, reporting the cost as a fraction of the enumeration it replaces.
+- `benchmarks/configurations.py` sizes the trust region of the master to the
+  design space for `pure_convexification`, which needs it to reach the optimum
+  from every starting point, and leaves it alone for `adaptive`, which reaches
+  it either way and only pays for the wider region. The comparison with the
+  baselines is reported both ways.
 - `BoxSubdivision.max_step`, the largest trust-region step of the master in the
   distance induced by the weights of the boxes, to be passed as its `max_step`
   when a run stops early: the master's own default of ten is smaller than the

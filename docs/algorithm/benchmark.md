@@ -253,6 +253,10 @@ start box      max_step 10          max_step 18
 
 For the adaptive repair, which already reaches 8/8, the larger radius only costs:
 $47$ boxes and $606$ evaluations instead of $24$ and $308$, for the same optimum.
+Measured over the whole comparison of the formulations, it is the same story,
+the same reliability for up to twice the worst-case cost: the normalized
+formulation goes from $20$–$36$ boxes to $24$–$56$, still 8/8, and the constraint
+one from $24$–$28$ to $20$–$64$, still 7/8.
 So the radius buys exploration and is paid for in evaluations, which is what a
 trust region is for; the default configuration keeps the master's own value, and
 a problem on which the run stops early is a reason to raise it to
@@ -332,6 +336,31 @@ of starting points from which the optimum was **reached**.
 | Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
 | Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
 | Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
+
+Re-running the same column with the trust region sized to the design space, which
+is what rescues the pure convexification, changes nothing worth having for the
+adaptive repair used here:
+
+| problem | $n$ | master radius of $10$ | radius sized to the space |
+|---------|-----|-----------------------|---------------------------|
+| Rastrigin | 2 | $0.00$ · 519 · 3/3 | $0.00$ · 786 · 3/3 |
+| Ackley | 2 | $0.00$ · 708 · 3/3 | $0.00$ · 422 · 2/3 |
+| Styblinski-Tang | 2 | $0.00$ · 218 · 3/3 | $0.00$ · 240 · 3/3 |
+| Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 |
+| Rastrigin | 5 | $4.98$ · 899 · 0/3 | $4.98$ · 899 · 0/3 |
+| Ackley | 5 | $9.71$ · 1429 · 0/3 | $9.71$ · 1388 · 0/3 |
+| Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 466 · 3/3 |
+| Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.06$ · 1644 · 0/3 |
+
+Rastrigin in two dimensions costs half as much again for the same optimum, Ackley
+in two dimensions gets cheaper but loses a starting point, and the rest is
+unchanged. The five-variable rows cannot move: with two subdivisions per variable
+the diameter of the design space is $5$, *smaller* than the master's default
+radius of ten, so sizing the region tightens it rather than widening it. It only
+widens where the subdivision is fine, and there the gain goes to the constant,
+not to the adaptive repair. The benchmarks therefore size the radius for
+`pure_convexification` and leave it alone for `adaptive`, which is a measurement
+rather than a principle.
 
 :::{warning}
 **These numbers are measurements, not a claim of generalization.** The convexity

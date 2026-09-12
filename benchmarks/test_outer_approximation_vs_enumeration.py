@@ -54,6 +54,7 @@ from numpy.random import default_rng
 
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.configurations import SIZED_TRUST_REGION
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.problems import Rastrigin
@@ -171,11 +172,13 @@ def _run_outer_approximation(starting_point, formulation: str):
     Returns:
         The best objective value, the number of sub-problems and of executions.
     """
-    scenario, _, objective = _create_scenario(starting_point, formulation)
+    scenario, subdivision, objective = _create_scenario(starting_point, formulation)
+    settings = dict(CONFIGURATIONS[MASTER_CONFIGURATION])
+    if MASTER_CONFIGURATION in SIZED_TRUST_REGION:
+        settings["max_step"] = subdivision.max_step
+
     scenario.execute(
-        BiLevelMasterOuterApproximation_Settings(
-            max_iter=80, ub_tol=1e-4, **CONFIGURATIONS[MASTER_CONFIGURATION]
-        )
+        BiLevelMasterOuterApproximation_Settings(max_iter=80, ub_tol=1e-4, **settings)
     )
     return (
         float(scenario.optimization_result.f_opt),

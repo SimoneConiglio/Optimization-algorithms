@@ -54,6 +54,7 @@ from numpy.random import default_rng
 
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.configurations import SIZED_TRUST_REGION
 from benchmarks.problems import Counter
 from benchmarks.problems import Objective
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
@@ -238,6 +239,11 @@ def run_box_subdivision(
             ``"adaptive"`` or ``"pure_convexification"``. The two are
             different mechanisms and are not combined.
 
+    The trust region of the master is sized to the design space, with
+    :attr:`.BoxSubdivision.max_step`, for the configurations listed in
+    :data:`.SIZED_TRUST_REGION`, and left at the master's own radius for the
+    others.
+
     Returns:
         The outcome of the run.
     """
@@ -257,10 +263,14 @@ def run_box_subdivision(
         sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
         sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
     )
+    settings = dict(CONFIGURATIONS[configuration])
+    if configuration in SIZED_TRUST_REGION:
+        settings["max_step"] = subdivision.max_step
+
     with suppress(BudgetExceededError):
         scenario.execute(
             BiLevelMasterOuterApproximation_Settings(
-                max_iter=10000, ub_tol=1e-4, **CONFIGURATIONS[configuration]
+                max_iter=10000, ub_tol=1e-4, **settings
             )
         )
 
