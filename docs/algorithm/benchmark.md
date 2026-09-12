@@ -328,18 +328,24 @@ of starting points from which the optimum was **reached**.
 
 | problem | $n$ | box subdivision | multistart | CMA-ES | DIRECT |
 |---------|-----|-----------------|------------|--------|--------|
-| Rastrigin | 2 | $0.00$ · 519 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
+| Rastrigin | 2 | $0.00$ · 786 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
 | Rastrigin | 5 | $4.98$ · 899 · 0/3 | $3.98$ · 2500 · 0/3 | $8.96$ · 1945 · 0/3 | $4.98$ · 461 · 0/3 |
-| Ackley | 2 | $0.00$ · 708 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
-| Ackley | 5 | $9.71$ · 1429 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
-| Styblinski-Tang | 2 | $0.00$ · 218 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
+| Ackley | 2 | $0.00$ · 422 · 2/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
+| Ackley | 5 | $9.71$ · 1388 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
+| Styblinski-Tang | 2 | $0.00$ · 240 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
 | Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
 | Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
 | Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
 
-Re-running the same column with the trust region sized to the design space, which
-is what rescues the pure convexification, changes nothing worth having for the
-adaptive repair used here:
+The method runs with the trust region sized to the design space and the number of
+subdivisions of the default, which keeps the boxes in the hundreds: ten per
+variable in two dimensions and two in five. Both choices matter, and the second
+one leaves a result on the table, as the section on the density shows: at ten
+subdivisions per variable in five dimensions, Rastrigin is solved, which nothing
+in this table does.
+
+Sizing the radius is what the pure convexification needs, and on this comparison,
+which uses the adaptive repair, it is close to neutral:
 
 | problem | $n$ | master radius of $10$ | radius sized to the space |
 |---------|-----|-----------------------|---------------------------|
@@ -354,13 +360,11 @@ adaptive repair used here:
 
 Rastrigin in two dimensions costs half as much again for the same optimum, Ackley
 in two dimensions gets cheaper but loses a starting point, and the rest is
-unchanged. The five-variable rows cannot move: with two subdivisions per variable
-the diameter of the design space is $5$, *smaller* than the master's default
-radius of ten, so sizing the region tightens it rather than widening it. It only
-widens where the subdivision is fine, and there the gain goes to the constant,
-not to the adaptive repair. The benchmarks therefore size the radius for
-`pure_convexification` and leave it alone for `adaptive`, which is a measurement
-rather than a principle.
+unchanged. The five-variable rows cannot move at this density: with two
+subdivisions per variable the diameter of the design space is $5$, *smaller* than
+the master's default radius of ten, so sizing tightens the region rather than
+widening it. It only widens where the subdivision is fine, and there it decides
+the outcome, hence sizing it everywhere.
 
 :::{warning}
 **These numbers are measurements, not a claim of generalization.** The convexity
@@ -380,11 +384,13 @@ Read with that caveat, the table says three things.
 solved from every starting point for $466$ evaluations, against $2340$ for
 multistart, $1457$ for CMA-ES and $2505$ for DIRECT. Same answer, three to five
 times cheaper. In two dimensions it reaches the optimum from every starting point
-on all three problems that any method solves.
+on Rastrigin and Styblinski-Tang, and from two out of three on Ackley.
 
 **It is not the most reliable in five dimensions.** On Ackley it matches
 multistart and is beaten by CMA-ES, which reaches the optimum every time; on
-Griewank, DIRECT is closer.
+Griewank, DIRECT is closer. On Rastrigin the row above hides the result: at this
+density no method solves it, and the method does, at a density this table does
+not use.
 
 **DIRECT is a serious baseline at low dimension**, cheap and reliable, and any
 claim for the method has to be made against it rather than against multistart
@@ -450,9 +456,9 @@ there does not carry over unchanged. Two questions are open at five variables:
 which of the two mechanisms to use, and whether to subdivide every variable
 coarsely or a few of them finely.
 
-### The constant is the better buy
+### The constant is the better buy at the coarse subdivision
 
-Same subdivision, two per variable, equal budget, three starting points:
+Two subdivisions per variable, equal budget, three starting points:
 
 | problem | adaptive | pure convexification |
 |---------|----------|----------------------|
@@ -462,8 +468,8 @@ Same subdivision, two per variable, equal budget, three starting points:
 | Griewank | $0.06$ · 1644 · 0/3 | $0.06$ · **1277** · 0/3 |
 
 Same answer on three problems out of four for a quarter to a third less, the
-exception being Ackley. Sweeping each mechanism's constant per problem says where
-that comes from:
+exception being Ackley. Sweeping each mechanism's constant per problem, at that
+same subdivision:
 
 | problem | constant | $1$ | $10$ | $100$ | $1000$ |
 |---------|----------|-----|------|-------|--------|
@@ -476,14 +482,44 @@ that comes from:
 | Griewank | convexification | $0.08$ | $0.06$ | $0.06$ | $0.06$ |
 | Griewank | margin | **$0.06$ (422)** | $0.06$ | $0.06$ | $0.06$ |
 
-Three things follow. The constant is **not** to be scaled down with the objective
-range as simply as the two-dimensional case suggested: Griewank spans about two
-and is served as well by any value, while Styblinski-Tang spans hundreds and the
+The constant is **not** to be scaled down with the range of the objective as
+simply as the two-dimensional case suggested: Griewank spans about two and is
+served as well by any value, while Styblinski-Tang spans hundreds and the
 convexification needs a hundred exactly. Where a smaller constant suffices it is
 also cheaper, Styblinski-Tang being solved for $230$ evaluations at a margin of
 ten instead of $466$ at a hundred, so the constant is worth sweeping downwards
 once a configuration works. And Ackley is insensitive to every value of either
 mechanism, which says the master is not what fails there.
+
+### At the fine subdivision, the margin goes up, not down
+
+Ten subdivisions per variable, the radius sized to the diameter of the design
+space, $45$, a budget of $5000$:
+
+| problem | mechanism | $1$ | $10$ | $30$ | $100$ |
+|---------|-----------|-----|------|------|-------|
+| Rastrigin | margin | $17.91$ | $6.11$ | **$0.00$, 2/3 (2895)** | **$0.00$, 2/3 (3357)** |
+| Rastrigin | convexification | $33.41$ | $33.41$ | $33.41$ | **$6.97$** |
+| Ackley | margin | $8.12$ | $8.12$ | $8.12$ | **$7.08$** |
+| Ackley | convexification | $19.42$ | $19.42$ | $18.58$ | **$16.52$**, 1/3 |
+
+Finer boxes differ from each other by less, so a constant tuned on the coarse
+subdivision might be expected to swamp their ranking. Measured with the radius
+left at the master's default, that is what it looks like: a margin of ten then
+beats a margin of a hundred at this density, $3.98$ against $15.92$. With the
+radius sized, the ordering reverses and the large margin wins outright. The
+apparent need for a smaller constant was the master being unable to move more
+than a variable or two at a time, and a smaller margin making that confinement
+less harmful.
+
+One case does behave the other way, and it is the pure convexification rather
+than the adaptive repair: Styblinski-Tang at ten subdivisions per variable, with
+the radius already sized, is solved by a constant of **one** for $212$
+evaluations, the cheapest configuration measured on any five-variable problem
+here, and ruined by ten or a hundred, $46.82$ and $28.27$, while the same problem
+at four subdivisions per variable needs a hundred. So the constant of the
+convexification does depend on the size of the boxes; it is not a rule that
+transfers from one problem to another.
 
 ### Refining some variables only, and when it pays
 

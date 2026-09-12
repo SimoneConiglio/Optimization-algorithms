@@ -88,7 +88,9 @@ and this project adheres to
   number of subdivisions minus one, and starting below it confines the search:
   with five variables and ten subdivisions each, that is the difference between
   solving Rastrigin, which no baseline here does, and returning a gap of
-  sixteen.
+  sixteen. The benchmark page reports the comparison with the radius sized, the
+  density sweep it corrects, and the constants of both mechanisms at the fine
+  subdivision, where the convexity margin goes up rather than down.
 - `benchmarks/refine_some_variables.py`, comparing a coarse subdivision of every
   variable with a fine subdivision of some of them, and the `partly_multimodal`
   problem it needs, multimodal in two variables and convex in the others.

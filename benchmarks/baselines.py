@@ -73,29 +73,26 @@ if TYPE_CHECKING:
     from benchmarks.problems import Problem
 
 MAX_BOXES = 100
-"""The number of boxes the subdivision aims at, whatever the dimension.
+"""The number of boxes the subdivision of the comparison aims at.
 
 The boxes being the Cartesian product of the subdivisions, a fixed number of them
-per variable makes their count explode with the dimension. Holding the *product*
-roughly constant instead keeps the default cheap: on the sweep, the coarsest
-subdivision is the least expensive of those that reach the optimum, and the only
-one that gets close on the densely multimodal problems, each box having to be
-close to unimodal for its local solve to return the box optimum.
+per variable makes their count explode with the dimension, and holding the
+*product* roughly constant instead keeps the comparison cheap: it reproduces ten
+subdivisions per variable in two dimensions and two in five.
 
-A larger number of boxes is not, by itself, out of reach of the master: with the
-adaptive repair of the cut slopes, Styblinski-Tang in five dimensions is solved
-from every starting point over a hundred thousand boxes as well as over
-thirty-two, for three times the evaluations.
+It is a budget, **not** a limit of the method. The master grows with the one-hot
+binaries, the sum of the numbers of subdivisions, not with their product: five
+variables with ten subdivisions each is a hundred thousand boxes and only fifty
+binaries. Provided the trust region is sized to the design space, that density
+solves Rastrigin in five dimensions, which nothing in this comparison does, for
+about three thousand four hundred evaluations, where this default returns a gap
+of five.
 
-What bounds the applicability of the method is the landscape rather than the
-number of boxes: the subdivision has to resolve the basins, so it suits a problem
-with a moderate number of them rather than a densely multimodal one.
-
-This value was read off the sweep, not derived: it reproduces ten subdivisions in
-two dimensions and two in five, which are the cheapest observed there. The number
-of subdivisions that suits a problem depends on the spacing of its basins, not on
-its dimension alone, so no rule in the dimension alone is right; this one only
-keeps the default sane as the dimension grows.
+What the subdivision has to do is resolve the basins of the landscape, and this
+default does not always manage it, which is why it leaves that result on the
+table. Refining past the basins is waste rather than danger: Styblinski-Tang and
+Griewank, whose basins two subdivisions per variable already separate, only get
+more expensive at ten.
 """
 
 

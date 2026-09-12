@@ -54,8 +54,12 @@ the global optimum after solving about 20 boxes, roughly five times cheaper than
 solving all of them, and on Styblinski-Tang in five dimensions it does so for
 three to five times fewer evaluations than multistart, CMA-ES or DIRECT.
 
-The method suits a landscape with a **moderate number of basins**, the
-subdivision having to resolve them; on a densely multimodal one an evolution
+The subdivision has to **resolve the basins** of the landscape, and it can afford
+to: the master grows with the one-hot binaries, not with the boxes, so five
+variables subdivided ten times each is a hundred thousand boxes and only fifty
+binaries. At that density, and with the trust region of the master sized to the
+design space, Rastrigin in five dimensions is solved, which none of the three
+baselines does. Where the subdivision does not resolve the basins, an evolution
 strategy does better. The
 [benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html)
 reports both sides.
