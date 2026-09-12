@@ -2,12 +2,10 @@ name: Release
 
 on:
   push:
-    # Only version tags publish, so that other tags cannot trigger a release.
+    # Only version tags publish, so that another tag cannot start a release.
     tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+[ab.]*"
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+[ab.]*"
+      - "[0-9]*"
+      - "v[0-9]*"
   workflow_dispatch:
     inputs:
       index:
@@ -19,33 +17,9 @@ on:
         default: testpypi
 
 jobs:
-  test:
-    name: Test before publishing
+  build:
+    name: Test and build
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install tox
-        run: python -m pip install --upgrade pip tox tox-uv
-      - name: Run the tests
-        run: tox -e py3.13
-        env:
-          MPLBACKEND: AGG
-
-  publish:
-    name: Publish
-    # An upload to a package index cannot be undone, so never publish a tag
-    # whose tests do not pass.
-    needs: test
-    runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.index || 'pypi' }}
-    permissions:
-      # Required for trusted publishing, which needs no token.
-      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,6 +30,11 @@ jobs:
           python-version: "3.13"
       - name: Install tox
         run: python -m pip install --upgrade pip tox tox-uv
+      - name: Run the tests
+        # An upload cannot be undone, so never publish a tag that does not pass.
+        run: tox -e py3.13
+        env:
+          MPLBACKEND: AGG
       - name: Build the distribution
         run: tox -e dist
       - name: Check the metadata rendered by the index
@@ -66,11 +45,36 @@ jobs:
         with:
           name: dist
           path: dist/
-      - name: Publish to TestPyPI
-        if: github.event.inputs.index == 'testpypi'
-        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && inputs.index == 'testpypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      # Required for trusted publishing, which needs no token.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-      - name: Publish to PyPI
-        if: github.event.inputs.index != 'testpypi'
-        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: github.event_name == 'push' || inputs.index == 'pypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
