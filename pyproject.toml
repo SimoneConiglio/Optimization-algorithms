@@ -39,19 +39,11 @@ dev = [
     "pytest-xdist >=3",
 ]
 doc = [
-    "black",
-    "griffe-fieldz",
-    "griffe-inherited-docstrings",
-    "markdown-exec[ansi]",
-    "mike",
-    "mkdocs-bibtex",
-    "mkdocs-gallery",
-    "mkdocs-gen-files",
-    "mkdocs-include-markdown-plugin",
-    "mkdocs-literate-nav",
-    "mkdocs-material",
-    "mkdocs-section-index",
-    "mkdocstrings[python]",
+    "furo",
+    "myst-parser",
+    "sphinx >=7",
+    "sphinx-copybutton",
+    "sphinx-design",
 ]
 
 [project.urls]

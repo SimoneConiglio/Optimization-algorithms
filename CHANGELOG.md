@@ -33,6 +33,11 @@ and this project adheres to
 - The benchmarks no longer have their report stripped by the `T20` rule of
   ruff, whose unsafe fixes silently replaced the `print` calls by `pass`.
 
+### Changed
+
+- The documentation is built with Sphinx instead of MkDocs, and published on
+  GitHub Pages by a dedicated workflow.
+
 ### Added
 
 - Initial packaging of the project as a GEMSEO plugin, generated from the

@@ -9,80 +9,74 @@ Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 # gemseo-algos-lab
 
-[![PyPI - License](https://img.shields.io/pypi/l/gemseo-algos-lab)](https://www.gnu.org/licenses/lgpl-3.0.en.html)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/gemseo-algos-lab)](https://pypi.org/project/gemseo-algos-lab/)
 [![PyPI](https://img.shields.io/pypi/v/gemseo-algos-lab)](https://pypi.org/project/gemseo-algos-lab/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/gemseo-algos-lab)](https://pypi.org/project/gemseo-algos-lab/)
+[![PyPI - License](https://img.shields.io/pypi/l/gemseo-algos-lab)](https://www.gnu.org/licenses/lgpl-3.0.en.html)
 [![CI](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/ci.yml/badge.svg)](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/ci.yml)
-
-## Overview
+[![Documentation](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/docs.yml/badge.svg)](https://simoneconiglio.github.io/Optimization-algorithms/)
 
 A laboratory for exploring optimization algorithms built on
 [GEMSEO](https://gemseo.org).
 
-This package is a GEMSEO plugin: the algorithms it defines are registered in the
-GEMSEO factories and can be used wherever a GEMSEO algorithm name is expected,
-without importing this package explicitly.
-
-It also depends on
-[gemseo-bilevel-outer-approximation](https://pypi.org/project/gemseo-bilevel-outer-approximation/),
-so that its mixed-integer algorithms (`OUTER_APPROXIMATION`,
-`BILEVEL_MASTER_OUTER_APPROXIMATION` and `ORTOOLS_MILP`) are available as
-building blocks.
-
-At this stage the package contains no algorithm yet, only the plugin scaffolding.
-
 ## Installation
 
-Install the latest version with `pip install gemseo-algos-lab`.
-
-See [pip](https://pip.pypa.io/en/stable/getting-started/) for more information.
-
-## Usage
-
-Once installed, the algorithms of this package are listed by GEMSEO:
-
-```python
-from gemseo.algos.opt.factory import OptimizationLibraryFactory
-
-print(OptimizationLibraryFactory().algorithms)
+```shell
+pip install gemseo-algos-lab
 ```
 
-## Adding an optimization algorithm
+Python 3.10 to 3.13. This also installs GEMSEO and
+[gemseo-bilevel-outer-approximation](https://pypi.org/project/gemseo-bilevel-outer-approximation/).
 
-Algorithms live under `src/gemseo_algos_lab/algos/opt/<algo_name>/` and follow
-the GEMSEO conventions:
+## Documentation
 
-- `<algo_name>_settings.py` defines a Pydantic settings model deriving from
-  `gemseo.algos.opt.base_optimizer_settings.BaseOptimizerSettings`, whose
-  `_TARGET_CLASS_NAME` is the name of the library class;
-- `<algo_name>.py` defines a class deriving from
-  `gemseo.algos.opt.base_optimization_library.BaseOptimizationLibrary`, which
-  declares its algorithms in `ALGORITHM_INFOS` and implements `_run`.
+**<https://simoneconiglio.github.io/Optimization-algorithms/>**
 
-Any such class placed in this package is discovered automatically through the
-`gemseo_plugins` entry point declared in `pyproject.toml`.
+| Page | Contents |
+|------|----------|
+| [Methodology](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/methodology.html) | motivation, equations, convexification |
+| [Implementation](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/implementation.html) | the building blocks and their pitfalls |
+| [Usage](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/usage.html) | how to build a GEMSEO scenario |
+| [Benchmark](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/benchmark.html) | measured results against enumeration |
+
+## What it does
+
+The package is a **GEMSEO plugin**: its algorithms register themselves in the
+GEMSEO factories and are usable wherever a GEMSEO algorithm name is expected.
+
+It implements the **box-subdivision outer approximation**, a bi-level method for
+multimodal non-linear problems. Each design variable is split into subdivisions,
+whose Cartesian product defines boxes. A MILP master decides which box to look
+into, and a local NLP solves the original problem inside it, so the exploration
+of the design space and its local exploitation stay in two distinct levels.
+
+On the Rastrigin function in two dimensions subdivided into 100 boxes, it reaches
+the global optimum after solving about 20 boxes, roughly five times cheaper than
+solving all of them.
+
+> [!WARNING]
+> The convexification constant defaults to `0.0` in GEMSEO, which makes the
+> outer-approximation cuts invalid on a multimodal problem: the master converges
+> after two or three sub-problems and reports success far from the optimum. See
+> [Convexification](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/methodology.html#convexification).
 
 ## Development
 
-The project uses [tox](https://tox.wiki):
-
 ```shell
-tox -e py3.12          # run the tests
-tox -e py3.12-coverage # run the tests with coverage
-tox -e check           # run the pre-commit hooks
-tox -e doc             # serve the documentation locally
-tox -e dist            # build and check the distribution
+git clone https://github.com/SimoneConiglio/Optimization-algorithms.git
+cd Optimization-algorithms
+python -m pip install tox tox-uv
+tox -e py3.12       # tests
+tox -e check        # pre-commit hooks
+tox -e doc          # documentation, into docs/_build/html
+tox -e benchmark    # algorithm benchmarks
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Bugs and questions
 
 Please use the
-[GitHub issue tracker](https://github.com/SimoneConiglio/Optimization-algorithms/issues)
-to submit bugs or questions.
-
-## Contributing
-
-See [CONTRIBUTING.md](https://github.com/SimoneConiglio/Optimization-algorithms/blob/main/CONTRIBUTING.md).
+[GitHub issue tracker](https://github.com/SimoneConiglio/Optimization-algorithms/issues).
 
 ## Contributors
 

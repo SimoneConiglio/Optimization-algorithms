@@ -12,9 +12,7 @@
 /.vscode
 /tags
 
-/docs/generated/examples
-/docs/examples/**/*.png
-/site
+/docs/_build
 
 /htmlcov
 
@@ -23,3 +21,4 @@
 !/.coveragerc
 
 /.pytest_cache
+/docs/_autosummary

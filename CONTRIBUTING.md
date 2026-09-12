@@ -29,7 +29,8 @@ src/gemseo_algos_lab/
 └── algos/
     └── opt/            # the optimization libraries contributed to GEMSEO
 tests/                  # mirrors the layout of src
-docs/                   # the mkdocs documentation
+docs/                   # the Sphinx documentation
+benchmarks/             # the algorithm benchmarks
 ```
 
 ## Adding an optimization algorithm
