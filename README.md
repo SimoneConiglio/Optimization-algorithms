@@ -60,10 +60,12 @@ strategy does better. The
 [benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html)
 reports both sides.
 
-**Warning.** The convexification constant defaults to `0.0` in GEMSEO, which
-makes the outer-approximation cuts invalid on a multimodal problem: the master
-converges after two or three sub-problems and reports success far from the
-optimum. See
+**Warning.** The master's two guards against non-convexity are both off by
+default in GEMSEO, which makes the outer-approximation cuts invalid on a
+multimodal problem: the master converges after two or three sub-problems and
+reports success far from the optimum. Set one of them, `adapt=True` with a
+convexity margin `min_dfk` scaled to the objective, or a
+`convexification_constant` alone, never both. See
 [Convexification](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html#convexification).
 
 ## Development

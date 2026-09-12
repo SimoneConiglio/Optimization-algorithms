@@ -30,6 +30,13 @@ and this project adheres to
 
 ### Fixed
 
+- The benchmarks no longer mix the two mechanisms of the master, the adaptive
+  repair of the cut slopes and the fixed convexification constant, which are
+  different approaches. The configuration is now an explicit axis,
+  `benchmarks/configurations.py`, and the settings and results reported by the
+  documentation are measured with one mechanism at a time. The previously
+  reported comparison of the two formulations, 96% against 58%, compared their
+  tuning rather than the formulations.
 - The benchmarks no longer have their report stripped by the `T20` rule of
   ruff, whose unsafe fixes silently replaced the `print` calls by `pass`.
 - The equations of the documentation are rendered: MathJax is served by the
@@ -66,6 +73,8 @@ and this project adheres to
 - `create_box_samples`, the one-hot vectors of every box, to solve them all
   with the `CustomDOE` driver.
 - Benchmark comparing the outer approximation with that enumeration.
+- `benchmarks/configurations.py`, the two named configurations of the master,
+  `adaptive`, the default, and `pure_convexification`.
 - Benchmark comparing the method with the baselines of the problem class,
   multistart, CMA-ES and DIRECT, at equal budget of equivalent objective
   evaluations under both gradient-cost conventions.

@@ -28,78 +28,131 @@ discipline**, the quantity that is expensive in an industrial problem.
 
 Reproduce with `tox -e benchmark`.
 
-## Cost
+## Cost, and the two formulations
+
+Both formulations run the same master, in the `adaptive` configuration described
+below; nothing here is tuned per formulation.
 
 | Formulation | Method | Objective | Boxes solved | Executions |
 |-------------|--------|-----------|--------------|------------|
 | constraint | enumeration | $0.0$ | 100 | 1427 |
-| constraint | outer approximation | $0.0$ | 18 to 22 | 253 to 316 |
+| constraint | outer approximation | $0.0$ | 24 to 28 | 346 to 404 |
 | normalized | enumeration | $0.0$ | 100 | 1267 |
-| normalized | outer approximation | $0.0$ | 15 to 22 | 195 to 281 |
+| normalized | outer approximation | $0.0$ | 20 to 36 | 254 to 470 |
 
-About **five times cheaper for the same optimum**, each formulation using its own
-tuned convexification.
+About **four times cheaper for the same optimum**.
+
+Over eight starting points, the normalized formulation reaches the global optimum
+**8 out of 8** times and the constraint one **7 out of 8**, so the normalized one
+is retained, as it was on the earlier measurement, but by a much smaller margin
+than that measurement suggested.
 
 The normalized formulation also solves its boxes for about 11% less when
 enumerating, since its sub-problems are bounded by their box and start inside it,
 instead of having to restore the feasibility of a box constraint.
 
-## Convexification is decisive, and not transferable
-
-Sweeping the convexification constant over 16 starting points, counting how often
-the global optimum is reached (`benchmarks/tune_convexification.py`):
-
-| Formulation | Constant | `adapt` | Reached | Median executions |
-|-------------|----------|---------|---------|-------------------|
-| constraint | $0$ to $5$ | yes | 0 / 16 | 30 to 90 |
-| constraint | $10$ | yes | 8 / 16 | 234 |
-| constraint | $50$ | yes | 9 / 16 | 254 |
-| constraint | $500$ | yes | 9 / 16 | 280 |
-| normalized | $10$ | yes | 6 / 16 | 188 |
-| normalized | $50$ | yes | 15 / 16 | 230 |
-| normalized | **$100$** | yes | **16 / 16** | 235 |
-| normalized | $200$ | yes | 12 / 16 | 221 |
-
-Three readings:
-
-**Too small a constant fails silently.** Below $10$, the master converges after
-two or three sub-problems on a point an order of magnitude from the optimum, and
-reports success. The GEMSEO default of $0$ is in this regime.
-
-**There is a genuine optimum.** Too large a constant loosens the relaxation and
-the exploration degrades again: the normalized formulation drops from 16/16 at
-$100$ to 12/16 at $200$. It cannot simply be set conservatively high.
-
-**The constant is not transferable between formulations.** The normalized one
-needs about ten times more, because the bilinearity of $x(\xi,\alpha)$ adds
-curvature with respect to the box selection, which is precisely what the
-convexification has to dominate.
-
-## Reliability
-
-The tuned settings, over three independent seeds of 16 starting points each:
-
-| Configuration | seed 11 | seed 101 | seed 202 | Total | Median executions |
-|---------------|---------|----------|----------|-------|-------------------|
-| normalized, $\kappa=100$, adapt | 16/16 | 15/16 | 15/16 | **96%** | 231 |
-| constraint, $\kappa=500$, adapt | 9/16 | 10/16 | 9/16 | 58% | 234 |
-| constraint, $\kappa=25$, no adapt | 9/16 | 8/16 | 6/16 | 48% | 235 |
-
-At equal cost, the normalized formulation reaches the global optimum from 96% of
-the starting points against 58% for the best setting of the constraint one. The
-constraint formulation never exceeded 9/16 anywhere between $10$ and $500$, with
-or without adaptation, so this is not a tuning gap.
-
-The adaptive convexification is worth 16/16 against 12/16 for the normalized
-formulation at its best constant.
-
 :::{note}
-An earlier version of this page reported the opposite, that the constraint
-formulation explored better. That measurement compared the two at a single
-constant of $10$, which suits the constraint formulation and is far too small for
-the normalized one. Comparing formulations at a shared constant measures the
-constant, not the formulation.
+An earlier version of this page reported 96% against 58% for the two
+formulations, with a convexification constant tuned separately for each. Once the
+two mechanisms of the master are separated and only one is used, both
+formulations do better and the difference between them is small. What that
+earlier measurement mostly compared was the tuning.
 :::
+
+## The master has two mechanisms, and they must not be combined
+
+Outer-approximation cuts are supporting hyperplanes only if the value function is
+convex. On a multimodal problem it is not, and the master offers **two distinct
+mechanisms** for keeping its cuts usable. They rest on different arguments, and
+measuring them together measures neither.
+
+`pure_convexification`
+: adds to the objective a convex term vanishing at the integer points. Once its
+  constant dominates the concavity of the relaxed problem, the relaxation is
+  convex and the outer approximation converges. Driven by
+  `convexification_constant`, with `adapt` off.
+
+`adaptive`
+: repairs the slope of each cut by least squares against the pairs of points
+  already observed, so that no cut over-predicts a value that has been measured.
+  Driven by `adapt` and the convexity margin `min_dfk`, with no convexification
+  constant.
+
+:::{warning}
+An earlier version of this page reported a single sweep with **both** mechanisms
+active, and concluded that the convexification constant was decisive and not
+transferable between formulations. That measurement was confounded and its
+conclusion is withdrawn. The two are swept apart below.
+:::
+
+### The adaptive repair, which reaches the optimum most often
+
+Rastrigin in two dimensions, eight starting points, no convexification constant:
+
+| parallel points | `min_dfk` = 1 | 10 | **30** | **100** | 300 |
+|-----------------|---------------|----|--------|---------|-----|
+| 1 | 0/8 | 0/8 | — | — | — |
+| **4** | 1/8 | 3/8 | **8/8** (26 boxes) | **8/8** (24 boxes) | 7/8 |
+| 8 | 0/8 | 1/8 | 8/8 (26) | 8/8 (52) | 8/8 (56) |
+
+Two settings are essential rather than an optimization.
+
+**Several parallel points.** The master probes one trust-region radius per point,
+over `geomspace(step / 2, step)`, so that a feasible master problem stays
+available. With a single point the run stops after two or three boxes whatever
+the margin.
+
+**A margin on the scale of the objective.** `min_dfk` is subtracted from an
+objective difference, so it is an absolute quantity in the units of the
+objective, not a ratio. The objective spans about eighty here, and a margin of
+thirty to a hundred reaches the optimum every time, a margin of ten three times
+out of eight, a margin of one never.
+
+### The pure convexification, which saturates
+
+Same problem and starting points, `adapt` off, one parallel point:
+
+| constant | $0$ | $1$ | $10$ | $50$ | $100$ | $500$ | $2000$ | $10^4$ | $10^5$ |
+|----------|-----|-----|------|------|-------|-------|--------|--------|--------|
+| reached | 0/8 | 0/8 | 0/8 | 5/8 | **6/8** | 5/8 | **6/8** | 4/8 | 3/8 |
+| boxes | 2 | 2 | 2 | 20 | 15 | 16 | 16 | 15 | 16 |
+
+Raising the constant helps sharply up to about a hundred, then **stops helping
+and eventually hurts**, while the number of boxes explored saturates near
+fifteen to twenty out of a hundred. That is not what the theory predicts, and the
+reason is in the implementation rather than in the argument.
+
+### Why raising the constant stops buying exploration
+
+Instrumenting the master problem shows two coupled effects.
+
+**The constant destroys the lower bound.** The optimum $\eta$ of the master comes
+back at $-996$ for a constant of $1000$, and at $-9991$ for $10^4$: that is
+$\eta \approx -\kappa$. The convexification tilts every cut by
+$\pm\kappa / n_{\text{comp}}$ per component, and the relaxed master exploits that
+tilt. The gap $\mathrm{ub} - \mathrm{lb} \approx \mathrm{ub} + \kappa$ therefore
+never closes, and the convergence test on `ub_tol` can never fire. The guarantee
+is not wrong; it is unreachable, the algorithm never obtaining the certificate
+that would let it stop on optimality.
+
+**Without a usable bound, the run can only die of an infeasible master.** The
+trust region shrinks after three iterations without improvement, and the loop
+ends on the first infeasible master problem:
+
+```text
+kappa = 1000 :  step 7.0 -> 4.9 -> 3.4, then infeasible -> stop   (13 boxes)
+kappa = 10000:  step 5.9 -> 4.1 -> 2.9, then infeasible -> stop   (25 boxes)
+```
+
+So the number of boxes explored is set by the **schedule that shrinks the trust
+region**, not by the constant, which is why it saturates and why it is not
+monotone. Raising `max_step` from ten to a hundred changes nothing: it is the
+shrinking that ends the run, not the ceiling.
+
+Two things would follow from this, and neither is implemented here: restoring the
+step towards `max_step` and retrying before giving up on an infeasible master,
+and reporting the bound net of the convexification term, which vanishes at the
+integer points and so leaves the gap meaningful.
 
 ## Comparison with the baselines of the problem class
 
@@ -160,34 +213,38 @@ of starting points from which the optimum was **reached**.
 
 | problem | $n$ | box subdivision | multistart | CMA-ES | DIRECT |
 |---------|-----|-----------------|------------|--------|--------|
-| Rastrigin | 2 | $0.00$ · 344 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
-| Rastrigin | 5 | $4.98$ · 584 · 0/3 | $3.98$ · 2500 · 0/3 | $8.96$ · 1945 · 0/3 | $4.98$ · 461 · 0/3 |
-| Ackley | 2 | $0.00$ · 353 · 2/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
-| Ackley | 5 | $14.43$ · 599 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
-| Styblinski-Tang | 2 | $0.00$ · 105 · 2/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
-| Styblinski-Tang | 5 | $0.00$ · 502 · 3/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
-| Griewank | 2 | $0.03$ · 336 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
-| Griewank | 5 | $0.08$ · 709 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
+| Rastrigin | 2 | $0.00$ · 519 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
+| Rastrigin | 5 | $4.98$ · 899 · 0/3 | $3.98$ · 2500 · 0/3 | $8.96$ · 1945 · 0/3 | $4.98$ · 461 · 0/3 |
+| Ackley | 2 | $0.00$ · 708 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
+| Ackley | 5 | $9.71$ · 1429 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
+| Styblinski-Tang | 2 | $0.00$ · 218 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
+| Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
+| Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
+| Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
 
 :::{warning}
-**These numbers are measurements, not a claim of generalization.** The
-convexification constant was tuned on Rastrigin in two dimensions and then held
-fixed, which penalises the other three problems, and the default number of
-subdivisions was read off the sweep below, on these very problems. Tuning on the
-problems one then reports is circular. A claim about the method, rather than
-about its tuning, needs a held-out set of problems or a protocol fixed in
-advance.
+**These numbers are measurements, not a claim of generalization.** The convexity
+margin was set on Rastrigin in two dimensions and then applied to every problem,
+although it is an absolute quantity in the units of the objective: it is far too
+large for Griewank, whose objective spans about two, and probably too small for
+Styblinski-Tang in five dimensions, whose objective spans hundreds. The default
+number of subdivisions was likewise read off the sweep below, on these very
+problems. Tuning on the problems one then reports is circular. A claim about the
+method needs a held-out set of problems, a protocol fixed in advance, and a
+margin scaled to each problem.
 :::
 
 Read with that caveat, the table says three things.
 
 **Where it works, it is the cheapest.** Styblinski-Tang in five dimensions is
-solved from every starting point for $502$ evaluations, against $2340$ for
+solved from every starting point for $466$ evaluations, against $2340$ for
 multistart, $1457$ for CMA-ES and $2505$ for DIRECT. Same answer, three to five
-times cheaper. Same in two dimensions, for $105$.
+times cheaper. In two dimensions it reaches the optimum from every starting point
+on all three problems that any method solves.
 
-**It is not the most reliable.** On Ackley in five dimensions it is the worst of
-the four, while CMA-ES reaches the optimum every time.
+**It is not the most reliable in five dimensions.** On Ackley it matches
+multistart and is beaten by CMA-ES, which reaches the optimum every time; on
+Griewank, DIRECT is closer.
 
 **DIRECT is a serious baseline at low dimension**, cheap and reliable, and any
 claim for the method has to be made against it rather than against multistart
@@ -241,18 +298,24 @@ Established:
 - against the exhaustive enumeration of the boxes, the outer approximation
   reaches the same optimum solving about a fifth of them, at about a fifth of the
   cost;
-- the sub-problem starting point and the convexification are both decisive, and
-  both fail silently when wrong;
-- the normalized formulation dominates the constraint one, once each is tuned;
+- the sub-problem starting point and the guard against non-convexity are both
+  decisive, and both fail silently when wrong;
+- the adaptive repair, with a convexity margin scaled to the objective and
+  several boxes solved per master iteration, reaches the optimum from every
+  starting point, where the fixed convexification constant saturates near
+  six out of eight whatever its value;
+- the two formulations behave alike under the same master settings, the
+  normalized one being slightly ahead and cheaper to assemble;
 - where the subdivision resolves the basins, the method reaches the optimum for
   three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
-- where it does not, the method is the worst of the four, and no setting of the
-  convexification recovers it.
+- where it does not, the method is the worst of the four, and no setting of
+  either mechanism recovers it.
 
 Not established:
 
-- **generalization.** The convexification and the number of subdivisions were
-  tuned on the problems then reported. A claim about the method needs a held-out
+- **generalization.** The convexity margin and the number of subdivisions were
+  tuned on the problems then reported, and the margin is in the units of the
+  objective, so it does not even transfer between them unchanged. A claim about the method needs a held-out
   set or a protocol fixed in advance.
 - **a rule for the number of subdivisions.** It has to follow the spacing of the
   basins, which is not known a priori. Estimating it, from the curvature or from

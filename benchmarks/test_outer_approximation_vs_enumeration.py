@@ -52,6 +52,8 @@ from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approxima
 from numpy import median
 from numpy.random import default_rng
 
+from benchmarks.configurations import CONFIGURATIONS
+from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.problems import Rastrigin
@@ -80,17 +82,11 @@ N_SUBDIVISIONS = 10
 N_STARTING_POINTS = 3
 """The number of starting points."""
 
-OUTER_APPROXIMATION_SETTINGS = {
-    "constraint": {"convexification_constant": 500.0, "adapt": True},
-    "normalized": {"convexification_constant": 100.0, "adapt": True},
-}
-"""The convexification tuned for each formulation, see `tune_convexification.py`.
+MASTER_CONFIGURATION = DEFAULT_CONFIGURATION
+"""The configuration of the master, the same for both formulations.
 
-The cuts of the outer approximation are only valid on a convex problem, so the
-convexification is what keeps them from cutting the global optimum off. Its
-constant has to be tuned per formulation: the normalized one needs a larger
-one, because the design variables are bilinear in the normalized variables and
-the box selection, which adds curvature with respect to the box selection.
+The two mechanisms of the master are not combined, and the comparison of the
+formulations uses one of them, see :mod:`benchmarks.configurations`.
 """
 
 N_RELIABILITY_POINTS = 8
@@ -178,7 +174,7 @@ def _run_outer_approximation(starting_point, formulation: str):
     scenario, _, objective = _create_scenario(starting_point, formulation)
     scenario.execute(
         BiLevelMasterOuterApproximation_Settings(
-            max_iter=80, ub_tol=1e-4, **OUTER_APPROXIMATION_SETTINGS[formulation]
+            max_iter=80, ub_tol=1e-4, **CONFIGURATIONS[MASTER_CONFIGURATION]
         )
     )
     return (

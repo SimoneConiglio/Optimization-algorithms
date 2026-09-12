@@ -49,7 +49,11 @@ scenario = create_scenario(
 )
 scenario.execute(
     BiLevelMasterOuterApproximation_Settings(
-        max_iter=80, ub_tol=1e-4, convexification_constant=100.0, adapt=True
+        max_iter=80,
+        ub_tol=1e-4,
+        adapt=True,
+        min_dfk=100.0,
+        number_of_parallel_points=4,
     )
 )
 ```
@@ -112,19 +116,34 @@ DOELibraryFactory().execute(
 ## Settings that matter
 
 :::{warning}
-`convexification_constant` defaults to `0.0`, which on a multimodal problem makes
-the cuts invalid: the master converges after two or three sub-problems and
-reports success on a point far from the optimum. It **must** be set, see
-[Convexification](methodology.md#convexification).
+Left to their defaults, the master's two safeguards are both off: the cuts are
+then invalid on a multimodal problem, the master converges after two or three
+sub-problems and reports success on a point far from the optimum. One of them
+**must** be set, see [Convexification](methodology.md#convexification).
 :::
+
+The master offers **two different mechanisms** against the non-convexity of the
+relaxed problem, and they are not meant to be combined:
+
+`adaptive`
+: `adapt=True` with a convexity margin `min_dfk`, the constant left at zero. The
+  master repairs its cut slopes against the boxes it has already solved. This is
+  the recommended configuration.
+
+`pure_convexification`
+: `adapt=False` with `convexification_constant` $\kappa > 0$, the margin left at
+  zero. The master adds $\kappa\, C(\alpha)$ to the relaxed problem, which is the
+  configuration carrying the convergence guarantee, at the price of a lower bound
+  degraded by $\kappa$, see [the benchmark](benchmark.md#the-master-has-two-mechanisms-and-they-must-not-be-combined).
 
 | Setting | Recommended | Why |
 |---------|-------------|-----|
-| `convexification_constant` | $100$ normalized, $\sim 25$ to $500$ constraint | keeps the cuts valid; tune per problem |
-| `adapt` | `True` | repairs the slopes against the observed history |
+| `adapt` | `True` | repairs the cut slopes against the boxes already solved |
+| `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
+| `convexification_constant` | $0$ with `adapt=True` | the other mechanism; use it *instead of*, not with, the adaptive repair |
+| `number_of_parallel_points` | $4$ | decisive: with a single point the master stops after two or three boxes |
 | `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
-| `number_of_parallel_points` | $>1$ | solves several boxes per master iteration |
 
 And one choice that is not a setting of the algorithm but of the subdivision:
 
@@ -132,5 +151,6 @@ And one choice that is not a setting of the algorithm but of the subdivision:
 |--------|-------------|-----|
 | `n_subdivisions` | such that $\prod_i m_i$ stays in the hundreds | too many boxes and the cuts cannot tell them apart; too few and a box is no longer unimodal. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins) |
 
-The constant is problem-dependent. Sweep it with
-`benchmarks/tune_convexification.py` before trusting a result on a new problem.
+`min_dfk` is problem-dependent, being expressed in the units of the objective.
+Sweep it with `benchmarks/tune_convexification.py`, which sweeps each mechanism
+separately, before trusting a result on a new problem.

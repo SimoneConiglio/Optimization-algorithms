@@ -12,22 +12,18 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-"""Tune the convexification of the outer approximation, for each formulation.
+"""Sweep each mechanism of the master, separately.
 
-The cuts of the outer approximation are supporting hyperplanes only on a convex
-problem. On a multimodal one they can cut the global optimum off, and the
-convexification is what prevents it: too small a constant and the master
-converges after a couple of sub-problems on a poor point, too large a one and
-the relaxation is so loose that the exploration wanders.
+The two mechanisms are not combined, see :mod:`benchmarks.configurations`, so
+they are swept apart: the constant of the pure convexification on one side, the
+convexity margin and the number of parallel points of the adaptive repair on the
+other.
 
-The constant is not transferable from one formulation to the other, so
-comparing them at a single value favours whichever formulation that value
-happens to suit.
-
-This module is a script rather than a test, since a sweep takes minutes:
+The sweep also reports the number of **distinct boxes** whose sub-problem was
+solved, which is what the exploration amounts to, and which tells a run that
+found the optimum quickly from a run that stopped early.
 
 ```shell
-tox -e benchmark -- --no-header -q
 python -m benchmarks.tune_convexification
 ```
 """
@@ -44,53 +40,65 @@ from numpy.random import default_rng
 
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
-from benchmarks.test_outer_approximation_vs_enumeration import FORMULATIONS
 from benchmarks.test_outer_approximation_vs_enumeration import GLOBAL_OPTIMUM
 from benchmarks.test_outer_approximation_vs_enumeration import _create_scenario
 
-CONSTANTS = (0.0, 1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 500.0)
-"""The convexification constants to sweep."""
+CONSTANTS = (0.0, 1.0, 10.0, 50.0, 100.0, 500.0, 2000.0, 10000.0, 100000.0)
+"""The constants of the pure convexification to sweep."""
+
+MARGINS = (0.0, 1.0, 10.0, 30.0, 100.0, 300.0)
+"""The convexity margins of the adaptive repair to sweep.
+
+The margin is an absolute quantity in the units of the objective, which spans
+about eighty on this benchmark, so the range has to reach that order.
+"""
+
+PARALLEL_POINTS = (1, 4, 8)
+"""The numbers of parallel points to sweep."""
 
 TOLERANCE = 1e-3
 """The tolerance under which the global optimum is considered reached."""
 
 
 def measure(
-    formulation: str, constant: float, adapt: bool, starting_points
-) -> tuple[int, float, int]:
-    """Measure a configuration of the outer approximation.
+    formulation: str, starting_points, **settings
+) -> tuple[int, float, int, int]:
+    """Measure one configuration of the master.
 
     Args:
         formulation: Either ``"constraint"`` or ``"normalized"``.
-        constant: The convexification constant.
-        adapt: Whether to adapt the convexification.
         starting_points: The starting points.
+        **settings: The settings of the master.
 
     Returns:
-        The number of starting points from which the global optimum is reached,
-        the worst objective value and the median number of executions.
+        The number of starting points from which the optimum is reached, the
+        worst objective value, the median number of solved boxes and the median
+        number of evaluations of the objective.
     """
     values = []
-    executions = []
+    boxes = []
+    evaluations = []
     for starting_point in starting_points:
         scenario, _, objective = _create_scenario(starting_point, formulation)
         scenario.execute(
             BiLevelMasterOuterApproximation_Settings(
-                max_iter=80,
-                ub_tol=1e-4,
-                convexification_constant=constant,
-                adapt=adapt,
+                max_iter=200, ub_tol=1e-4, **settings
             )
         )
         values.append(float(scenario.optimization_result.f_opt))
-        executions.append(objective.n_executions)
+        boxes.append(len(scenario.formulation.optimization_problem.database))
+        evaluations.append(objective.n_executions)
 
-    hits = sum(value <= GLOBAL_OPTIMUM + TOLERANCE for value in values)
-    return hits, max(values), int(median(executions))
+    return (
+        sum(value <= GLOBAL_OPTIMUM + TOLERANCE for value in values),
+        max(values),
+        int(median(boxes)),
+        int(median(evaluations)),
+    )
 
 
-def main(n_starting_points: int = 16, seed: int = 11) -> None:
-    """Sweep the convexification of both formulations.
+def main(n_starting_points: int = 8, seed: int = 11) -> None:
+    """Sweep both mechanisms of the master.
 
     Args:
         n_starting_points: The number of starting points per configuration.
@@ -102,21 +110,44 @@ def main(n_starting_points: int = 16, seed: int = 11) -> None:
         rng.uniform(RASTRIGIN_LOWER_BOUND, RASTRIGIN_UPPER_BOUND, 2)
         for _ in range(n_starting_points)
     ]
+    header = f"{'reached':>9} {'worst':>9} {'boxes':>7} {'evaluations':>12}"
+
     print(
-        f"{'formulation':>12} {'constant':>9} {'adapt':>6} | "
-        f"{'hits':>9} {'worst f':>9} {'execs':>7}"
+        "PURE CONVEXIFICATION, adapt off, one parallel point\n"
+        f"{'constant':>10} {header}"
     )
-    for formulation in FORMULATIONS:
-        for adapt in (True, False):
-            for constant in CONSTANTS:
-                hits, worst, executions = measure(
-                    formulation, constant, adapt, starting_points
-                )
-                print(
-                    f"{formulation:>12} {constant:>9g} {adapt!s:>6} | "
-                    f"{hits:>4d}/{n_starting_points:<4d} {worst:>9.4f} "
-                    f"{executions:>7d}"
-                )
+    for constant in CONSTANTS:
+        reached, worst, boxes, evaluations = measure(
+            "normalized",
+            starting_points,
+            adapt=False,
+            min_dfk=0.0,
+            convexification_constant=constant,
+            number_of_parallel_points=1,
+        )
+        print(
+            f"{constant:>10g} {reached:>4d}/{n_starting_points:<4d} "
+            f"{worst:>9.4f} {boxes:>7d} {evaluations:>12d}"
+        )
+
+    print(
+        "\nADAPTIVE REPAIR, no convexification constant\n"
+        f"{'margin':>10} {'points':>7} {header}"
+    )
+    for points in PARALLEL_POINTS:
+        for margin in MARGINS:
+            reached, worst, boxes, evaluations = measure(
+                "normalized",
+                starting_points,
+                adapt=True,
+                min_dfk=margin,
+                convexification_constant=0.0,
+                number_of_parallel_points=points,
+            )
+            print(
+                f"{margin:>10g} {points:>7d} {reached:>4d}/{n_starting_points:<4d} "
+                f"{worst:>9.4f} {boxes:>7d} {evaluations:>12d}"
+            )
 
 
 if __name__ == "__main__":

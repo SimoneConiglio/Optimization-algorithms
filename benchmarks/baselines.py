@@ -52,6 +52,8 @@ from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approxima
 from numpy import full
 from numpy.random import default_rng
 
+from benchmarks.configurations import CONFIGURATIONS
+from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.problems import Counter
 from benchmarks.problems import Objective
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
@@ -64,9 +66,6 @@ if TYPE_CHECKING:
     from numpy import ndarray
 
     from benchmarks.problems import Problem
-
-CONVEXIFICATION_CONSTANT = 100.0
-"""The convexification tuned for the normalized formulation."""
 
 MAX_BOXES = 100
 """The number of boxes the subdivision aims at, whatever the dimension.
@@ -220,6 +219,7 @@ def run_box_subdivision(
     budget: int,
     adjoint: bool,
     n_subdivisions: int = 0,
+    configuration: str = DEFAULT_CONFIGURATION,
 ) -> Result:
     """Run the box-subdivision outer approximation.
 
@@ -231,6 +231,9 @@ def run_box_subdivision(
         adjoint: Whether a gradient costs one objective evaluation.
         n_subdivisions: The number of subdivisions per variable.
             If zero, use :func:`.default_n_subdivisions`.
+        configuration: The configuration of the master, either
+            ``"adaptive"`` or ``"pure_convexification"``. The two are
+            different mechanisms and are not combined.
 
     Returns:
         The outcome of the run.
@@ -254,10 +257,7 @@ def run_box_subdivision(
     with suppress(BudgetExceededError):
         scenario.execute(
             BiLevelMasterOuterApproximation_Settings(
-                max_iter=10000,
-                ub_tol=1e-4,
-                convexification_constant=CONVEXIFICATION_CONSTANT,
-                adapt=True,
+                max_iter=10000, ub_tol=1e-4, **CONFIGURATIONS[configuration]
             )
         )
 

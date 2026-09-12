@@ -157,7 +157,8 @@ where $\xi_j$ is pinned to a bound so the partial derivative is the total one.
 The counterpart is that $x$ is **bilinear** in $(\xi, \alpha)$: the choice of the
 box enters the non-linearity of the objective instead of staying in a jointly
 convex constraint. As shown in [the benchmark](benchmark.md), this costs nothing
-in quality but requires a larger convexification constant.
+in quality: under the same master settings the normalized formulation reaches the
+optimum from every starting point and the constraint one from all but one.
 
 (convexification)=
 ## Convexification
@@ -168,10 +169,16 @@ elsewhere and cut the global optimum off. The master then converges quickly, and
 reports a wrong answer without any error.
 
 :::{warning}
-This is the single most important setting of the method, and its GEMSEO default
-is `convexification_constant=0.0`, which on the benchmark below reaches the
-global optimum from **none** of the starting points while reporting success.
+Guarding against this is the single most important setting of the method, and
+both guards are off by default: `convexification_constant=0.0` and
+`adapt=False`. On the benchmark below, that default reaches the global optimum
+from **none** of the starting points while reporting success.
 :::
+
+The master offers two mechanisms for it, described below. They act differently
+and are **not meant to be combined**: use the fixed constant $\kappa$, which
+carries the convergence guarantee, or the adaptive repair with its convexity
+margin, which reaches the optimum more often, and leave the other at zero.
 
 ### What the convexification actually is
 
@@ -229,8 +236,22 @@ $$
 with $\delta$ a convexity margin (`min_dfk`). The violations are collected and a
 least-squares correction is applied to each slope so that the cuts become
 consistent with the whole history. It is a data-driven repair of cut validity,
-and it composes with $\kappa$ rather than replacing it: the benchmark's best
-settings use both.
+and it **replaces** $\kappa$ rather than composing with it: the margin $\delta$
+enforces the convexity the constant would otherwise impose, from the observed
+values rather than from a worst case, so setting both applies the correction
+twice over. Being a margin on the objective, $\delta$ is an **absolute**
+quantity in the units of $f$ and has to be scaled to the problem, whereas
+$\kappa$ scales with the relaxed polytope.
+
+The two differ in what they guarantee. A large enough $\kappa$ dominates the
+non-convexity of $u$ over the relaxed polytope and the cuts are then valid by
+construction, which is the convergence argument; but it also lowers the master's
+lower bound by nearly $\kappa$, so the bound never meets the incumbent and the
+run ends on the trust region instead of on the tolerance, see
+[the benchmark](benchmark.md#why-raising-the-constant-stops-buying-exploration).
+The adaptive repair keeps the bound usable and, on the benchmark, reaches the
+optimum from every starting point, but it enforces convexity only against the
+boxes already visited, so it carries no guarantee.
 
 ## Relation to spatial branch-and-bound
 
