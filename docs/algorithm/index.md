@@ -9,12 +9,51 @@
 
 # The algorithm
 
-A bi-level algorithm for multimodal non-linear problems, in which a Cartesian
-subdivision of the design space separates the exploration, deciding which box to
-look into, from the exploitation, solving the original problem inside that box.
+The **box-subdivision outer approximation** is a bi-level method for multimodal
+non-linear problems. A Cartesian subdivision of the design space defines a
+finite set of boxes; a MILP master decides which box to look into, and a local
+NLP solves the original problem inside it. Exploration and exploitation stay in
+two distinct levels.
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} Methodology
+:link: methodology
+:link-type: doc
+
+The motivation, the bi-level formulation and its equations, the two
+formulations, and what the convexification really does.
+:::
+
+:::{grid-item-card} Implementation
+:link: implementation
+:link-type: doc
+
+The building blocks contributed to GEMSEO, the one-hot layout they share, and
+the two pitfalls that fail silently.
+:::
+
+:::{grid-item-card} Usage
+:link: usage
+:link-type: doc
+
+Building a GEMSEO scenario with either formulation, and the settings that
+matter.
+:::
+
+:::{grid-item-card} Benchmark
+:link: benchmark
+:link-type: doc
+
+Measured against the exhaustive enumeration of the boxes, and the tuning of the
+convexification.
+:::
+
+::::
 
 ```{toctree}
-:maxdepth: 2
+:hidden:
 
 methodology
 implementation

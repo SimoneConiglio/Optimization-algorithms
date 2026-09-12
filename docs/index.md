@@ -16,25 +16,65 @@ The package is a **GEMSEO plugin**: the algorithms it defines register
 themselves in the GEMSEO factories and can be used wherever a GEMSEO algorithm
 name is expected, without importing the package explicitly.
 
-It currently implements the **box-subdivision outer approximation**, a bi-level
-method for multimodal non-linear problems that keeps the exploration of the
-design space and the local exploitation of a region in two distinct levels.
+It implements the **box-subdivision outer approximation**, a bi-level method for
+multimodal non-linear problems that keeps the exploration of the design space
+and the local exploitation of a region in two distinct levels.
 
-```{toctree}
-:maxdepth: 2
-:caption: Contents
-
-installation
-algorithm/index
-api
-changelog
+```{code-block} shell
+pip install gemseo-algos-lab
 ```
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} {octicon}`beaker;1.5em;sd-mr-1` Methodology
+:link: algorithm/methodology
+:link-type: doc
+
+Why separate exploration from exploitation, the bi-level formulation, and what
+the convexification really does.
+:::
+
+:::{grid-item-card} {octicon}`tools;1.5em;sd-mr-1` Implementation
+:link: algorithm/implementation
+:link-type: doc
+
+The building blocks, the one-hot layout they share, and the two pitfalls that
+fail silently.
+:::
+
+:::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` Usage
+:link: algorithm/usage
+:link-type: doc
+
+Building a GEMSEO scenario with either formulation, and the settings that
+matter.
+:::
+
+:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Benchmark
+:link: algorithm/benchmark
+:link-type: doc
+
+Measured against the exhaustive enumeration of the boxes: five times cheaper
+for the same optimum.
+:::
+
+::::
 
 ## At a glance
 
 On the Rastrigin function in two dimensions, subdivided into 100 boxes, the
 method reaches the global optimum after solving about 20 boxes, roughly five
 times cheaper than solving all of them.
+
+$$
+\min_\alpha\ u(\alpha)
+\quad \text{where} \quad
+u(\alpha) = \min_x \left\{ f(x) : g(x) \le 0,\ \ell(\alpha) \le x \le u(\alpha) \right\}
+$$
+
+A MILP master decides the box through the one-hot vector $\alpha$, and a local
+NLP solves the original problem inside it.
 
 ```{warning}
 The convexification constant defaults to `0.0` in GEMSEO, which makes the
@@ -44,7 +84,11 @@ after two or three sub-problems and reports success far from the optimum. Read
 method.
 ```
 
-## Indices
+```{toctree}
+:hidden:
 
-- {ref}`genindex`
-- {ref}`modindex`
+installation
+algorithm/index
+api
+changelog
+```

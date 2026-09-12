@@ -18,6 +18,11 @@ from __future__ import annotations
 
 from importlib.metadata import version as get_version
 from os import environ
+from pathlib import Path
+from shutil import copyfile
+from sysconfig import get_paths
+
+REPOSITORY_URL = "https://github.com/SimoneConiglio/Optimization-algorithms"
 
 project = "gemseo-algos-lab"
 author = "Simone Coniglio"
@@ -69,15 +74,107 @@ intersphinx_timeout = 10
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_title = f"gemseo-algos-lab {release}"
+html_css_files = ["custom.css"]
+html_title = "gemseo-algos-lab"
 html_logo = "_static/monogram.png"
+html_favicon = "_static/monogram.png"
+html_show_sourcelink = False
+
+# Pages without children would otherwise show an empty section navigation.
+html_sidebars = {"index": [], "installation": [], "changelog": []}
+
 html_theme_options = {
-    "source_repository": "https://github.com/SimoneConiglio/Optimization-algorithms/",
-    "source_branch": "main",
-    "source_directory": "docs/",
+    "github_url": REPOSITORY_URL,
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/gemseo-algos-lab/",
+            "icon": "fa-solid fa-box",
+        },
+    ],
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "navbar_align": "left",
+    "show_prev_next": True,
+    "show_toc_level": 2,
+    "use_edit_page_button": True,
+    "header_links_before_dropdown": 4,
+    "footer_start": ["copyright"],
+    "footer_end": ["theme-version"],
 }
+html_context = {
+    "github_user": "SimoneConiglio",
+    "github_repo": "Optimization-algorithms",
+    "github_version": "main",
+    "doc_path": "docs",
+    "default_mode": "auto",
+}
+
+
+# MathJax is served from the documentation itself rather than from a CDN, so
+# that the equations render on a network that blocks third-party CDNs, and from
+# a local build. The bundle comes from the sphinx-mathjax-offline distribution,
+# whose directory name is not a valid identifier, hence it cannot be used as an
+# extension and only its files are read.
+MATHJAX_BUNDLE = "tex-svg-full.js"
+"""The self-contained MathJax bundle, whose SVG output needs no web font."""
+
+
+def _find_mathjax_bundle() -> Path | None:
+    """Return the path to the MathJax bundle, if it is installed.
+
+    Returns:
+        The path to the bundle, or ``None`` when it is not installed.
+    """
+    bundle = (
+        Path(get_paths()["purelib"])
+        / "sphinx-mathjax-offline"
+        / "static"
+        / "mathjax"
+        / MATHJAX_BUNDLE
+    )
+    return bundle if bundle.is_file() else None
+
+
+def setup(app):  # noqa: ANN001, ANN201
+    """Serve MathJax from the documentation when its bundle is installed.
+
+    Args:
+        app: The Sphinx application.
+    """
+    bundle = _find_mathjax_bundle()
+    if bundle is None:
+        # Fall back on the CDN configured by Sphinx rather than break the build.
+        return
+
+    app.connect(
+        "builder-inited",
+        lambda application: setattr(
+            application.config, "mathjax_path", f"mathjax/{MATHJAX_BUNDLE}"
+        ),
+    )
+    app.connect(
+        "build-finished",
+        lambda application, exception: (
+            _copy_mathjax_bundle(application, bundle) if exception is None else None
+        ),
+    )
+
+
+def _copy_mathjax_bundle(app, bundle) -> None:  # noqa: ANN001
+    """Copy the MathJax bundle next to the other static files.
+
+    Args:
+        app: The Sphinx application.
+        bundle: The path to the bundle.
+    """
+    directory = Path(app.outdir, "_static", "mathjax")
+    directory.mkdir(parents=True, exist_ok=True)
+    copyfile(bundle, directory / MATHJAX_BUNDLE)
+
 
 nitpicky = False
 # The inventories are unreachable when building without network access,

@@ -1,0 +1,24 @@
+/* Slightly wider content, and room to breathe around the equations. */
+.bd-main .bd-content .bd-article-container {
+  max-width: 66rem;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+  margin: 1.2rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* The comparison tables carry the results, so make them easy to scan. */
+table.docutils {
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sd-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12);
+}

@@ -39,11 +39,13 @@ dev = [
     "pytest-xdist >=3",
 ]
 doc = [
-    "furo",
     "myst-parser",
+    "pydata-sphinx-theme >=0.16",
     "sphinx >=7",
     "sphinx-copybutton",
     "sphinx-design",
+    # Ships MathJax, so that the equations do not depend on a CDN at view time.
+    "sphinx-mathjax-offline",
 ]
 
 [project.urls]

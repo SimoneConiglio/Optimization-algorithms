@@ -32,11 +32,16 @@ and this project adheres to
 
 - The benchmarks no longer have their report stripped by the `T20` rule of
   ruff, whose unsafe fixes silently replaced the `print` calls by `pass`.
+- The equations of the documentation are rendered: MathJax is served by the
+  documentation itself instead of a CDN, which a network blocking third-party
+  CDNs, or a local build, left unreachable.
 
 ### Changed
 
 - The documentation is built with Sphinx instead of MkDocs, and published on
   GitHub Pages by a dedicated workflow.
+- The documentation uses the PyData theme, with a navigation bar, a section
+  navigation, a page outline and cards on the landing pages.
 
 ### Added
 
