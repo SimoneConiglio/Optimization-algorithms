@@ -30,6 +30,8 @@ dependencies = [
 # The benchmarking harness is only needed to run the algorithm comparisons,
 # not to use the algorithms, hence a dedicated group.
 benchmark = [
+    # CMA-ES, one of the baselines; DIRECT comes with SciPy.
+    "cma >=4,<5",
     "gemseo-benchmark >=4,<5",
 ]
 dev = [
