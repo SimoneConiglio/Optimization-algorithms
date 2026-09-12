@@ -76,6 +76,13 @@ $$
 A MILP master decides the box through the one-hot vector $\alpha$, and a local
 NLP solves the original problem inside it.
 
+```{note}
+The method suits a landscape with a **moderate number of basins**: the
+subdivision has to resolve them. On a densely multimodal problem, such as
+Rastrigin beyond two dimensions, no tractable subdivision does, and an evolution
+strategy does better. See [the benchmark](algorithm/benchmark.md).
+```
+
 ```{warning}
 The convexification constant defaults to `0.0` in GEMSEO, which makes the
 outer-approximation cuts invalid on a multimodal problem: the master converges

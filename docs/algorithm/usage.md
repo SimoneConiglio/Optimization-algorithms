@@ -126,5 +126,11 @@ reports success on a point far from the optimum. It **must** be set, see
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
 | `number_of_parallel_points` | $>1$ | solves several boxes per master iteration |
 
+And one choice that is not a setting of the algorithm but of the subdivision:
+
+| Choice | Recommended | Why |
+|--------|-------------|-----|
+| `n_subdivisions` | such that $\prod_i m_i$ stays in the hundreds | too many boxes and the cuts cannot tell them apart; too few and a box is no longer unimodal. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins) |
+
 The constant is problem-dependent. Sweep it with
 `benchmarks/tune_convexification.py` before trusting a result on a new problem.

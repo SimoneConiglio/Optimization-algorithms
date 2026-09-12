@@ -66,6 +66,11 @@ and this project adheres to
 - `create_box_samples`, the one-hot vectors of every box, to solve them all
   with the `CustomDOE` driver.
 - Benchmark comparing the outer approximation with that enumeration.
+- Benchmark comparing the method with the baselines of the problem class,
+  multistart, CMA-ES and DIRECT, at equal budget of equivalent objective
+  evaluations under both gradient-cost conventions.
+- `benchmarks/run_baselines.py`, sweeping the baselines over the problems,
+  the dimensions and the seeds.
 - `BoxMapping` and `create_normalized_box_design_space`, an alternative
   formulation solving the sub-problem in the normalized variables of the box.
 - `BoxSubdivision.compute_bounds` and `BoxSubdivision.get_normalized_names`.

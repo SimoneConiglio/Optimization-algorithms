@@ -51,7 +51,14 @@ of the design space and its local exploitation stay in two distinct levels.
 
 On the Rastrigin function in two dimensions subdivided into 100 boxes, it reaches
 the global optimum after solving about 20 boxes, roughly five times cheaper than
-solving all of them.
+solving all of them, and on Styblinski-Tang in five dimensions it does so for
+three to five times fewer evaluations than multistart, CMA-ES or DIRECT.
+
+The method suits a landscape with a **moderate number of basins**, the
+subdivision having to resolve them; on a densely multimodal one an evolution
+strategy does better. The
+[benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html)
+reports both sides.
 
 **Warning.** The convexification constant defaults to `0.0` in GEMSEO, which
 makes the outer-approximation cuts invalid on a multimodal problem: the master
