@@ -252,44 +252,55 @@ alone.
 
 ## The subdivision has to resolve the basins
 
-The number of subdivisions per variable cannot be held fixed as the dimension
-grows. In five dimensions with ten subdivisions, the Cartesian product is
-$100\,000$ boxes, of which a run solves a score: the cut model, over $50$
-binaries, cannot discriminate between them, and the master stops almost
-immediately.
-
-Sweeping the number of subdivisions in five dimensions, median distance to the
-optimum over three starting points:
+Sweeping the number of subdivisions per variable in five dimensions, in the
+`adaptive` configuration, over three starting points: median distance to the
+optimum, the number of runs reaching it, and the median number of evaluations.
 
 | problem | $m=2$ (32 boxes) | $m=3$ (243) | $m=4$ (1024) | $m=10$ ($10^5$) |
 |---------|------------------|-------------|--------------|------------------|
-| Styblinski-Tang | **$0.00$, 3/3** | $0.00$, 3/3 | $3.68$ | $35.07$ |
-| Rastrigin | $4.98$ | $7.96$ | $6.70$ | $23.88$ |
-| Ackley | $14.43$ | $16.85$ | $15.93$ | $18.82$ |
+| Styblinski-Tang | **$0.00$, 3/3, 481** | $0.00$, 3/3, 641 | $0.00$, 3/3, 783 | $0.00$, 3/3, 1387 |
+| Rastrigin | **$4.98$**, 0/3, 707 | $4.98$, 0/3, 1882 | $6.70$, 0/3, 950 | $15.92$, 0/3, 1319 |
+| Ackley | **$9.71$**, 0/3, 1428 | $14.90$, 1/3, 2500 | $14.70$, 0/3, 2500 | $17.86$, 0/3, 1946 |
 
-And the convexification is **not** the cause: raising its constant from $100$ to
-$100\,000$ in five dimensions does not recover anything, Styblinski-Tang going
-from $35$ to $73$, with the cost staying near a hundred evaluations, that is with
-the master still stopping at once.
+Two readings, one of which corrects an earlier version of this page.
 
-So two requirements pull against each other:
+**The number of boxes is a matter of cost, not of feasibility.**
+Styblinski-Tang is solved from every starting point at *every* density, from
+$32$ boxes to $100\,000$, the cost merely growing from $481$ to $1387$
+evaluations: the master still finds its way among $50$ binaries. The coarsest
+subdivision is therefore the right default, being the cheapest, not the only one
+that works.
 
-- the boxes must be **few enough** for the cut model, built from a handful of
-  solved boxes, to tell them apart;
-- each box must be **close enough to unimodal** for its local solve to return the
-  box optimum, which is what the cuts assume.
+:::{note}
+An earlier version of this page reported Styblinski-Tang degrading from $0.00$
+at $m=2$ to $35.07$ at $m=10$ and concluded that too many boxes make the cut
+model unable to discriminate. That measurement mixed the two mechanisms of the
+master; with the adaptive repair alone, the degradation disappears. What
+collapses under a large number of boxes is the fixed convexification constant,
+not the method: run instead in the `pure_convexification` configuration, the
+same Styblinski-Tang goes from $0.00$, 3/3 at $m=2$ to $65.42$, 0/3 at $m=10$,
+the run stopping after $151$ evaluations, the master being infeasible almost at
+once.
+:::
 
-Their conflict, rather than the dimension itself, is what bounds the method: the
-subdivision has to **resolve the basins of the landscape**. Styblinski-Tang has
-about $2^n$ basins and $m=2$ matches them exactly, hence the perfect score.
-Rastrigin, whose minima are one unit apart over a range of ten, has about $10^n$
-of them, out of reach of any tractable subdivision.
+**What the subdivision must resolve is the landscape, not the dimension.**
+Styblinski-Tang has about $2^n$ basins and even $m=2$ separates them, hence the
+perfect score at every density. Rastrigin, whose minima are one unit apart over a
+range of ten, has about $10^n$ of them: no tractable subdivision separates them
+in five dimensions, and refining does not help, it hurts, the boxes staying
+multimodal while the master grows. Ackley behaves the same way.
 
-That is the honest answer to how the method scales: it scales with the **number
-of basins**, not with the number of variables, and it suits a problem with a
-moderate number of them. The default keeps the number of boxes bounded, which is
-a stopgap; the number of subdivisions that suits a problem follows the spacing of
-its basins, which the method does not know.
+The requirement is therefore on the **basins** rather than on the boxes: each box
+has to be close enough to unimodal for its local solve to return the box optimum,
+which is what the cuts assume. That is the honest answer to how the method
+scales: it scales with the number of basins, not with the number of variables,
+and it suits a problem with a moderate number of them.
+
+The default keeps the number of boxes in the hundreds, which is a stopgap
+justified by cost: it is the cheapest density among those that do as well. The
+number of subdivisions that actually suits a problem follows the spacing of its
+basins, which the method does not know, and estimating it, from the curvature or
+from a first sampling, is the most valuable next step.
 
 ## What this does and does not establish
 
@@ -309,16 +320,19 @@ Established:
 - where the subdivision resolves the basins, the method reaches the optimum for
   three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
 - where it does not, the method is the worst of the four, and no setting of
-  either mechanism recovers it.
+  either mechanism recovers it;
+- the number of boxes costs evaluations but does not, by itself, defeat the
+  master: with the adaptive repair, Styblinski-Tang in five dimensions is solved
+  from every starting point over $32$ boxes as well as over $100\,000$.
 
 Not established:
 
 - **generalization.** The convexity margin and the number of subdivisions were
   tuned on the problems then reported, and the margin is in the units of the
-  objective, so it does not even transfer between them unchanged. A claim about the method needs a held-out
-  set or a protocol fixed in advance.
+  objective, so it does not even transfer between them unchanged. A claim about
+  the method needs a held-out set or a protocol fixed in advance.
 - **a rule for the number of subdivisions.** It has to follow the spacing of the
-  basins, which is not known a priori. Estimating it, from the curvature or from
+  basins rather than the dimension, and that spacing is not known a priori. Estimating it, from the curvature or from
   a first sampling, is the most valuable next step.
 - **behaviour with constraints.** Every problem here is bound-constrained only.
 - **the industrial case.** The method earns its complexity when a sub-problem

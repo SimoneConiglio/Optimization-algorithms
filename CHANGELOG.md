@@ -36,7 +36,11 @@ and this project adheres to
   `benchmarks/configurations.py`, and the settings and results reported by the
   documentation are measured with one mechanism at a time. The previously
   reported comparison of the two formulations, 96% against 58%, compared their
-  tuning rather than the formulations.
+  tuning rather than the formulations, and the reported collapse of the method
+  when the number of boxes grows is a property of the fixed constant rather than
+  of the method: with the adaptive repair, Styblinski-Tang in five dimensions is
+  solved from every starting point over a hundred thousand boxes as well as over
+  thirty-two.
 - The benchmarks no longer have their report stripped by the `T20` rule of
   ruff, whose unsafe fixes silently replaced the `print` calls by `pass`.
 - The equations of the documentation are rendered: MathJax is served by the

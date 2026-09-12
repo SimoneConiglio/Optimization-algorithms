@@ -70,24 +70,27 @@ if TYPE_CHECKING:
 MAX_BOXES = 100
 """The number of boxes the subdivision aims at, whatever the dimension.
 
-The number of subdivisions per variable cannot be held fixed as the dimension
-grows: the boxes being the Cartesian product, a fixed number of them per variable
-makes their count explode, and the cut model of the master, built from a handful
-of solved boxes, can no longer discriminate between them. Holding the *product*
-roughly constant instead keeps the master informative, at the price of coarser
-boxes, which is the other requirement, each box having to be close to unimodal
-for its local solve to return the box optimum.
+The boxes being the Cartesian product of the subdivisions, a fixed number of them
+per variable makes their count explode with the dimension. Holding the *product*
+roughly constant instead keeps the default cheap: on the sweep, the coarsest
+subdivision is the least expensive of those that reach the optimum, and the only
+one that gets close on the densely multimodal problems, each box having to be
+close to unimodal for its local solve to return the box optimum.
 
-These two requirements conflict, and the conflict is what bounds the
-applicability of the method: it needs the subdivision to resolve the basins of
-the landscape, so it suits a problem with a moderate number of basins rather
-than a densely multimodal one.
+A larger number of boxes is not, by itself, out of reach of the master: with the
+adaptive repair of the cut slopes, Styblinski-Tang in five dimensions is solved
+from every starting point over a hundred thousand boxes as well as over
+thirty-two, for three times the evaluations.
 
-This value was read off the sweep, not derived: it reproduces ten subdivisions
-in two dimensions and two in five, which are the best observed there. The
-number of subdivisions that suits a problem depends on the spacing of its
-basins, not on its dimension alone, so no rule in the dimension alone is
-right; this one only keeps the default sane as the dimension grows.
+What bounds the applicability of the method is the landscape rather than the
+number of boxes: the subdivision has to resolve the basins, so it suits a problem
+with a moderate number of them rather than a densely multimodal one.
+
+This value was read off the sweep, not derived: it reproduces ten subdivisions in
+two dimensions and two in five, which are the cheapest observed there. The number
+of subdivisions that suits a problem depends on the spacing of its basins, not on
+its dimension alone, so no rule in the dimension alone is right; this one only
+keeps the default sane as the dimension grows.
 """
 
 
