@@ -53,11 +53,11 @@ On the Rastrigin function in two dimensions subdivided into 100 boxes, it reache
 the global optimum after solving about 20 boxes, roughly five times cheaper than
 solving all of them.
 
-> [!WARNING]
-> The convexification constant defaults to `0.0` in GEMSEO, which makes the
-> outer-approximation cuts invalid on a multimodal problem: the master converges
-> after two or three sub-problems and reports success far from the optimum. See
-> [Convexification](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html#convexification).
+**Warning.** The convexification constant defaults to `0.0` in GEMSEO, which
+makes the outer-approximation cuts invalid on a multimodal problem: the master
+converges after two or three sub-problems and reports success far from the
+optimum. See
+[Convexification](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html#convexification).
 
 ## Development
 

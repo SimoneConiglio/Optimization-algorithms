@@ -63,7 +63,69 @@ locking step. Only `requirements/check.in` remains, for the pre-commit tooling.
 
 ## Releasing
 
-The version is derived from the git tags by
-[setuptools_scm](https://setuptools-scm.readthedocs.io). Update `CHANGELOG.md`,
-tag the commit, and push the tag: the `Release` workflow builds the
-distribution and publishes it to PyPI through trusted publishing.
+The version is **derived from the git tag** by
+[setuptools_scm](https://setuptools-scm.readthedocs.io), so the tag is the only
+place a version number is written. An untagged build is a development version,
+such as `0.1.dev12+g7084de4`, which no index accepts.
+
+### Once, to set up trusted publishing
+
+Trusted publishing lets the workflow upload without any token or secret. On
+[PyPI](https://pypi.org/manage/account/publishing/), add a **pending publisher**
+for a project that does not exist yet:
+
+| Field | Value |
+|-------|-------|
+| PyPI project name | `gemseo-box-subdivision` |
+| Owner | `SimoneConiglio` |
+| Repository name | `gemseo-box-subdivision` |
+| Workflow name | `release.yml` |
+| Environment name | `pypi` |
+
+Then create the `pypi` environment in the repository, under
+Settings, Environments. Repeat both on
+[TestPyPI](https://test.pypi.org/manage/account/publishing/) with the
+environment `testpypi` to be able to rehearse a release.
+
+The repository name and the environment name must match exactly, since they are
+what PyPI checks in the token the workflow presents.
+
+### For each release
+
+1. Move the `Unreleased` section of `CHANGELOG.md` under the version being
+   released, with its date, and open a new empty `Unreleased` section.
+2. Check the release locally:
+
+   ```shell
+   tox -e py3.12 -e check -e dist
+   ```
+
+3. Commit the changelog, then tag and push:
+
+   ```shell
+   git tag 0.1.0
+   git push origin main --follow-tags
+   ```
+
+4. The `Release` workflow runs the tests, builds the distribution, checks the
+   metadata that the index will render, and publishes.
+
+### Rehearsing
+
+An upload cannot be undone, and a version number cannot be reused even after
+the file is deleted, so a mistake costs a version number. Before the first
+release, publish to TestPyPI from the Actions tab, with **Run workflow** on the
+`Release` workflow and the index `testpypi`, and check the result with
+
+```shell
+pip install --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ gemseo-box-subdivision
+```
+
+The extra index is needed because the dependencies live on PyPI, not on
+TestPyPI.
+
+### Tag format
+
+Only version tags publish, `1.2.3` or `v1.2.3`, with an optional `a`, `b` or
+`.postN` suffix for a pre-release. Any other tag is ignored by the workflow.
