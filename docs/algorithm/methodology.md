@@ -248,7 +248,7 @@ non-convexity of $u$ over the relaxed polytope and the cuts are then valid by
 construction, which is the convergence argument; but it also lowers the master's
 lower bound by nearly $\kappa$, so the bound never meets the incumbent and the
 run ends on the trust region instead of on the tolerance, see
-[the benchmark](benchmark.md#why-raising-the-constant-stops-buying-exploration).
+[the benchmark](benchmark.md#the-two-caps-that-end-a-run).
 The adaptive repair keeps the bound usable and, on the benchmark, reaches the
 optimum from every starting point, but it enforces convexity only against the
 boxes already visited, so it carries no guarantee.

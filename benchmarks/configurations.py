@@ -64,14 +64,30 @@ one from none. It has to be scaled to the problem.
 PURE_CONVEXIFICATION = MappingProxyType({
     "adapt": False,
     "min_dfk": 0.0,
-    "convexification_constant": 10000.0,
+    "convexification_constant": 100.0,
     "number_of_parallel_points": 1,
 })
 """The convex term added to the objective.
 
-The constant has to dominate the concavity of the relaxed problem, which depends
-on the problem, so this value is a starting point to sweep from rather than a
-default. See `tune_convexification.py`.
+The constant has to dominate the concavity of the relaxed problem and no more.
+It is an absolute quantity, of the order of the variation of the objective over
+the design space, about eighty on the Rastrigin benchmark, where the useful
+window is fifty to a hundred: the optimum is then reached from every starting
+point for about a fifth of the cost of enumerating the boxes.
+
+Below that window the cuts stay invalid and the master converges on a wrong
+point; above it, every unexplored box outranks the incumbent whatever the cuts
+say, so the master ranks them by nothing in particular and the result decays,
+six then five starting points out of eight, without the cost falling. An
+exaggerated constant is not a conservative choice, and the regime where the
+convergence argument would apply is out of reach anyway, the run ending on the
+trust region or on the stall counter rather than on its optimality test.
+
+This window was measured with the trust region sized to the design space, that
+is with the master's ``max_step`` set to
+:attr:`.BoxSubdivision.max_step`; with the master's own default of ten, the same
+constants reach the optimum from five or six starting points out of eight.
+See `tune_convexification.py`.
 """
 
 CONFIGURATIONS = MappingProxyType({

@@ -42,9 +42,18 @@ from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.test_outer_approximation_vs_enumeration import GLOBAL_OPTIMUM
 from benchmarks.test_outer_approximation_vs_enumeration import _create_scenario
+from benchmarks.test_outer_approximation_vs_enumeration import _run_enumeration
 
-CONSTANTS = (0.0, 1.0, 10.0, 50.0, 100.0, 500.0, 2000.0, 10000.0, 100000.0)
-"""The constants of the pure convexification to sweep."""
+CONSTANTS = (0.0, 10.0, 20.0, 30.0, 50.0, 75.0, 100.0, 150.0, 200.0, 300.0)
+"""The constants of the pure convexification to sweep.
+
+The range stops at a few hundred on purpose. The constant is of the order of the
+variation of the objective over the design space, about eighty here, and beyond
+that order it buys nothing: every unexplored box outranks the incumbent whatever
+the cuts say. Values such as $10^4$ only make the result decay while costing the
+same, since the run ends on the trust region or on the stall counter rather than
+on its optimality test.
+"""
 
 MARGINS = (0.0, 1.0, 10.0, 30.0, 100.0, 300.0)
 """The convexity margins of the adaptive repair to sweep.
@@ -110,24 +119,49 @@ def main(n_starting_points: int = 8, seed: int = 11) -> None:
         rng.uniform(RASTRIGIN_LOWER_BOUND, RASTRIGIN_UPPER_BOUND, 2)
         for _ in range(n_starting_points)
     ]
-    header = f"{'reached':>9} {'worst':>9} {'boxes':>7} {'evaluations':>12}"
+    header = (
+        f"{'reached':>9} {'worst':>9} {'boxes':>7} {'of enum':>8}"
+        f" {'evaluations':>12} {'of enum':>8}"
+    )
+    _, enumerated_boxes, enumerated_evaluations = _run_enumeration(
+        starting_points[0], "normalized"
+    )
+    subdivision = _create_scenario(starting_points[0], "normalized")[1]
+
+    def report(label: str, reached, worst, boxes, evaluations) -> None:
+        """Print one row of a sweep, with the cost against the enumeration.
+
+        Args:
+            label: The left-hand column of the row.
+            reached: The number of starting points from which the optimum is
+                reached.
+            worst: The worst objective value.
+            boxes: The median number of solved boxes.
+            evaluations: The median number of evaluations.
+        """
+        print(
+            f"{label} {reached:>4d}/{n_starting_points:<4d} {worst:>9.4f}"
+            f" {boxes:>7d} {boxes / enumerated_boxes:>7.0%}"
+            f" {evaluations:>12d} {evaluations / enumerated_evaluations:>7.0%}"
+        )
 
     print(
-        "PURE CONVEXIFICATION, adapt off, one parallel point\n"
+        "PURE CONVEXIFICATION, adapt off, one parallel point,\n"
+        f"trust region sized to the design space (max_step = {subdivision.max_step})\n"
         f"{'constant':>10} {header}"
     )
     for constant in CONSTANTS:
-        reached, worst, boxes, evaluations = measure(
-            "normalized",
-            starting_points,
-            adapt=False,
-            min_dfk=0.0,
-            convexification_constant=constant,
-            number_of_parallel_points=1,
-        )
-        print(
-            f"{constant:>10g} {reached:>4d}/{n_starting_points:<4d} "
-            f"{worst:>9.4f} {boxes:>7d} {evaluations:>12d}"
+        report(
+            f"{constant:>10g}",
+            *measure(
+                "normalized",
+                starting_points,
+                adapt=False,
+                min_dfk=0.0,
+                convexification_constant=constant,
+                number_of_parallel_points=1,
+                max_step=subdivision.max_step,
+            ),
         )
 
     print(
@@ -144,10 +178,7 @@ def main(n_starting_points: int = 8, seed: int = 11) -> None:
                 convexification_constant=0.0,
                 number_of_parallel_points=points,
             )
-            print(
-                f"{margin:>10g} {points:>7d} {reached:>4d}/{n_starting_points:<4d} "
-                f"{worst:>9.4f} {boxes:>7d} {evaluations:>12d}"
-            )
+            report(f"{margin:>10g} {points:>7d}", reached, worst, boxes, evaluations)
 
 
 if __name__ == "__main__":

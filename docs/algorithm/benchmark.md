@@ -108,23 +108,49 @@ objective, not a ratio. The objective spans about eighty here, and a margin of
 thirty to a hundred reaches the optimum every time, a margin of ten three times
 out of eight, a margin of one never.
 
-### The pure convexification, which saturates
+### The pure convexification, and the range where it is worth using
 
-Same problem and starting points, `adapt` off, one parallel point:
+The constant has to dominate the non-convexity of the relaxed problem, and no
+more: past that, every unexplored box outranks the incumbent whatever the cuts
+say, the master ranks them by nothing in particular, and the method degenerates
+towards the enumeration it exists to avoid. Since the enumeration of these $100$
+boxes is available for free and is embarrassingly parallel, a configuration is
+only worth its complexity while it stays well under it, which is the last two
+columns below.
 
-| constant | $0$ | $1$ | $10$ | $50$ | $100$ | $500$ | $2000$ | $10^4$ | $10^5$ |
-|----------|-----|-----|------|------|-------|-------|--------|--------|--------|
-| reached | 0/8 | 0/8 | 0/8 | 5/8 | **6/8** | 5/8 | **6/8** | 4/8 | 3/8 |
-| boxes | 2 | 2 | 2 | 20 | 15 | 16 | 16 | 15 | 16 |
+Same problem and starting points, `adapt` off, one parallel point, trust region
+sized to the design space:
 
-Raising the constant helps sharply up to about a hundred, then **stops helping
-and eventually hurts**, while the number of boxes explored saturates near
-fifteen to twenty out of a hundred. That is not what the theory predicts, and the
-reason is in the implementation rather than in the argument.
+| constant | reached | worst | boxes | of the enumeration | evaluations | of the enumeration |
+|----------|---------|-------|-------|--------------------|-------------|--------------------|
+| $10$ | 0/8 | $17.91$ | 2 | 2% | 32 | 3% |
+| $20$ | 5/8 | $3.98$ | 14 | 14% | 182 | 14% |
+| $30$ | 7/8 | $1.99$ | 26 | 26% | 334 | 26% |
+| $50$ | **8/8** | $0.00$ | 22 | 22% | 288 | 23% |
+| $75$ | 7/8 | $0.99$ | 22 | 22% | 281 | 22% |
+| $100$ | **8/8** | $0.00$ | 20 | 20% | 254 | 20% |
+| $150$ | 6/8 | $0.99$ | 22 | 22% | 283 | 22% |
+| $200$ | 5/8 | $1.99$ | 18 | 18% | 239 | 19% |
+| $300$ | 6/8 | $0.99$ | 20 | 20% | 258 | 20% |
 
-### Why raising the constant stops buying exploration
+The useful window is **fifty to a hundred**, where the optimum is reached from
+every starting point for about a fifth of the enumeration. It is no accident that
+this is the order of magnitude of the variation of the objective over the design
+space, about eighty here, which is also the order of the convexity margin the
+adaptive repair needs: both mechanisms are calibrated against the same quantity,
+the non-convexity they have to dominate, and neither is dimensionless.
 
-Instrumenting the master problem shows two coupled effects.
+Past that window the result decays, $6/8$ then $5/8$, and it keeps decaying at the
+values tried before writing this, $4/8$ at $10^4$ and $3/8$ at $10^5$. What does
+*not* happen is the cost growing with the constant: it stays near a fifth of the
+enumeration throughout, because the run ends on the two caps described next
+rather than on its optimality test. An exaggerated constant therefore buys
+nothing and costs the same; it is not a safe default to be conservative with.
+
+### The two caps that end a run
+
+Instrumenting the master problem shows why the constant cannot be pushed to the
+regime where its guarantee would apply.
 
 **The constant destroys the lower bound.** The optimum $\eta$ of the master comes
 back at $-996$ for a constant of $1000$, and at $-9991$ for $10^4$: that is
@@ -135,21 +161,28 @@ never closes, and the convergence test on `ub_tol` can never fire. The guarantee
 is not wrong; it is unreachable, the algorithm never obtaining the certificate
 that would let it stop on optimality.
 
-**Without a usable bound, the run can only die of an infeasible master.** The
-trust region shrinks after three iterations without improvement, and the loop
-ends on the first infeasible master problem:
+**So the run ends on a heuristic cap instead.** Either the trust region shrinks
+until the master is infeasible, described in the next section, or, when the trust
+region is inactive, the stall counter fires:
 
 ```text
-kappa = 1000 :  step 7.0 -> 4.9 -> 3.4, then infeasible -> stop   (13 boxes)
-kappa = 10000:  step 5.9 -> 4.1 -> 2.9, then infeasible -> stop   (25 boxes)
+MILP : Stalling iterations: 10/10.
+The Upper bound stopped changing for 10 iterations.
 ```
 
-So the number of boxes explored is set by the **schedule that shrinks the trust
-region**, not by the constant, which is why it saturates and why it is not
-monotone. Raising `max_step` from ten to a hundred changes nothing: it is the
-shrinking that ends the run, not the ceiling.
+`upper_bound_stall` defaults to ten: the master gives up after ten iterations
+that do not improve the incumbent, whatever its lower bound says. With one box
+solved per iteration, that alone caps a run near twenty boxes out of a hundred,
+which is exactly where the table above saturates.
 
-Two things would follow from this, and neither is implemented here: restoring the
+That is the whole answer to why raising the constant stops buying exploration:
+the run can only end on one of these caps, never on the optimality test, so the
+exploration is set by the caps and the constant only decides how well the cuts
+rank the boxes visited before they fire. Lifting the caps to recover the
+guarantee would cost the sub-problems the outer approximation exists to save,
+which is the same trade as enumerating.
+
+Two implementation changes would follow, and neither is made here: restoring the
 step towards `max_step` and retrying before giving up on an infeasible master,
 and reporting the bound net of the convexification term, which vanishes at the
 integer points and so leaves the gap meaningful.
@@ -202,10 +235,10 @@ returns that largest distance, to be passed to the master.
 Sweeping the constant of the pure convexification at both radii, over eight
 starting points:
 
-| `max_step` | $\kappa = 0$ | $10$ | $100$ | $1000$ | $10^4$ | $10^5$ |
-|------------|--------------|------|-------|--------|--------|--------|
-| $10$, the master default | 0/8 | 0/8 | 6/8 | — | 4/8 | 3/8 |
-| $18$, the design space | 0/8 | 0/8 | **8/8** | 7/8 | 4/8 | 4/8 |
+| `max_step` | $\kappa = 10$ | $50$ | $100$ | $1000$ |
+|------------|---------------|------|-------|--------|
+| $10$, the master default | 0/8 | 5/8 | 6/8 | — |
+| $18$, the design space | 0/8 | **8/8** | **8/8** | 7/8 |
 
 At its best constant, the pure convexification reaches the optimum from every
 starting point once the trust region is sized to the design space. Per starting
@@ -225,31 +258,12 @@ trust region is for; the default configuration keeps the master's own value, and
 a problem on which the run stops early is a reason to raise it to
 `subdivision.max_step`.
 
-### What actually stops a run without the trust region
-
-Deactivating the shrink, by setting `step_decreasing_activation` above the number
-of iterations, does not restore the textbook behaviour either, and raising
-$\kappa$ still buys nothing: 6/8 at $\kappa = 100$ and 3/8 at $10^5$, with the
-same numbers under the index weights and under unit weights, which is the
-signature of a trust region that is inactive in both. The cap has simply moved:
-
-```text
-MILP : Stalling iterations: 10/10.
-The Upper bound stopped changing for 10 iterations.
-```
-
-`upper_bound_stall` defaults to $10$: the master gives up after ten iterations
-that do not improve the incumbent, whatever its lower bound says. With one box
-solved per iteration, that alone caps a run near twenty boxes out of a hundred.
-
-Together with the lower bound degraded by $\kappa$, this is the whole explanation
-of why raising the constant stops buying exploration: the run can only end on the
-stall counter or on an infeasible master, never on the optimality test, so the
-convergence guarantee of the convexification is unreachable from any value of the
-constant. Recovering it needs the three settings raised together, `max_step` to
-the size of the design space, `step_decreasing_activation` and `upper_bound_stall`
-above the iteration count, and the price is the number of sub-problems the outer
-approximation was introduced to save.
+Deactivating the shrink instead, by setting `step_decreasing_activation` above
+the number of iterations, does not help: the run then ends on the stall counter
+described above, at 6/8 for $\kappa = 100$, with the same numbers under the index
+weights and under unit weights, which is the signature of a trust region inactive
+in both. The two caps replace each other, which is why neither the constant nor
+the radius alone recovers the guarantee.
 
 ## Comparison with the baselines of the problem class
 
@@ -410,8 +424,11 @@ Established:
   decisive, and both fail silently when wrong;
 - the adaptive repair, with a convexity margin scaled to the objective and
   several boxes solved per master iteration, reaches the optimum from every
-  starting point, where the fixed convexification constant saturates near
-  six out of eight whatever its value;
+  starting point, for about a quarter of the enumeration;
+- so does the fixed convexification constant, in a window of about fifty to a
+  hundred and with the trust region sized to the design space, for about a fifth
+  of the enumeration; outside that window it decays, and both constants are of
+  the order of the variation of the objective, not dimensionless;
 - the two formulations behave alike under the same master settings, the
   normalized one being slightly ahead and cheaper to assemble;
 - where the subdivision resolves the basins, the method reaches the optimum for
@@ -431,6 +448,10 @@ Not established:
 - **a rule for the number of subdivisions.** It has to follow the spacing of the
   basins rather than the dimension, and that spacing is not known a priori. Estimating it, from the curvature or from
   a first sampling, is the most valuable next step.
+- **the convergence guarantee of the convexification.** A run ends on the trust
+  region or on the stall counter, never on the optimality test, so the guarantee
+  is out of reach whatever the constant; and lifting both caps to recover it
+  costs the sub-problems the method exists to save.
 - **behaviour with constraints.** Every problem here is bound-constrained only.
 - **the industrial case.** The method earns its complexity when a sub-problem
   costs minutes, which is the regime none of these analytic problems is in, and

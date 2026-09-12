@@ -78,7 +78,10 @@ and this project adheres to
   with the `CustomDOE` driver.
 - Benchmark comparing the outer approximation with that enumeration.
 - `benchmarks/configurations.py`, the two named configurations of the master,
-  `adaptive`, the default, and `pure_convexification`.
+  `adaptive`, the default, and `pure_convexification`, whose constant is the
+  order of the variation of the objective rather than an arbitrarily large
+  number, and which the benchmarks now sweep over the range where it is worth
+  using, reporting the cost as a fraction of the enumeration it replaces.
 - `BoxSubdivision.max_step`, the largest trust-region step of the master in the
   distance induced by the weights of the boxes, to be passed as its `max_step`
   when a run stops early: the master's own default of ten is smaller than the

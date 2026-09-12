@@ -141,9 +141,9 @@ relaxed problem, and they are not meant to be combined:
 |---------|-------------|-----|
 | `adapt` | `True` | repairs the cut slopes against the boxes already solved |
 | `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
-| `convexification_constant` | $0$ with `adapt=True` | the other mechanism; use it *instead of*, not with, the adaptive repair |
+| `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [the benchmark](benchmark.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
 | `number_of_parallel_points` | $4$ | decisive: with a single point the master stops after two or three boxes |
-| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. The master's own default of $10$ is smaller than the design space as soon as the subdivision is not coarse, and then confines a run started in a high-index box, see [the benchmark](benchmark.md#the-trust-region-is-a-compromise-and-it-was-sized-wrong) |
+| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. The master's own default of $10$ is smaller than the design space as soon as the subdivision is not coarse, and then confines a run started in a high-index box, see [the benchmark](benchmark.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
 | `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
 
