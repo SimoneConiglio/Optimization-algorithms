@@ -140,16 +140,38 @@ Seen this way the algorithm is a **spatial branch-and-bound whose branching tree
 is fixed a priori and flattened into a single MILP master**, rather than
 explored adaptively.
 
+## Border boxes need a margin on the design space bounds
+
+Enforcing the box through the constraint only, and leaving the sub-problem
+design space at its original bounds, is enough to confine the sub-problem: in
+the one-dimensional experiment of `tests/disciplines/`, every box optimum stayed
+inside its box.
+
+The bounds are nevertheless not neutral. A box lying against the border of the
+design space has a face that *coincides* with a bound. When the optimum lies on
+that face, both are active, and GEMSEO attributes the multiplier to the bound:
+the box constraint is left with a multiplier of zero, so the sensitivity of the
+box optimum is silently computed as zero. On the test problem, the exact
+multiplier of the lower face of the first box is the objective slope at the
+origin, $6 - 0.6 \times 0.4 = 5.76$, and the measured value is:
+
+| margin (relative) | multiplier of the box constraint |
+|-------------------|----------------------------------|
+| $0$ to $10^{-6}$  | $0$ (attributed to the bound)    |
+| $10^{-5}$ and above | $5.76$                         |
+
+The threshold is the tolerance under which a bound counts as active.
+`BoxSubdivision.create_relaxed_design_space` therefore widens the bounds by a
+relative margin, $10^{-4}$ by default, an order of magnitude above the
+threshold. The box constraint still confines the design variables to the
+original bounds, up to the constraint tolerance.
+
+This matters for every variable, since the first and the last subdivision of
+each variable always touch a bound.
+
 ## Open questions
 
-1. **Confinement vs. degeneracy.** If the sub-problem design space keeps the
-   global bounds, the NLP solver may leave the box during line searches, which
-   weakens the separation between exploration and exploitation. If the box is
-   *also* enforced as bounds, the box constraint and the bound become active
-   together and the multiplier split between them is arbitrary, which corrupts
-   the cut gradient. A middle ground is to keep bounds slightly inflated with
-   respect to the box so that they are never active.
-2. **Static vs. adaptive subdivision.** A fixed subdivision is either too coarse
+1. **Static vs. adaptive subdivision.** A fixed subdivision is either too coarse
    (weak lower bound, many iterations) or too fine (large master, many boxes).
    Refining only the promising boxes would recover a genuine spatial
    branch-and-bound, at the cost of a master problem that grows during the run.

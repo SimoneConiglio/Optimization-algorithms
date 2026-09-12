@@ -36,3 +36,6 @@ and this project adheres to
 - `benchmark` dependency group with `gemseo-benchmark`, and the matching
   `tox -e benchmark` environment.
 - Design note for the box-subdivision outer approximation algorithm.
+- `BoxSubdivision`, a Cartesian subdivision of a design space.
+- `BoxConstraint`, the discipline expressing the selected box as a
+  vector-valued constraint, with its analytic Jacobian.
