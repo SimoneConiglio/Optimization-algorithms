@@ -1,0 +1,67 @@
+[project]
+name = "gemseo-algos-lab"
+authors = [
+    {name = "Simone Coniglio", email = "simone.coniglio91@gmail.com"}
+]
+description = "A laboratory for exploring optimization algorithms built on GEMSEO"
+readme = "README.md"
+license = "LGPL-3.0"
+license-files = ["LICENSE.txt"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dynamic = ["version"]
+requires-python = ">=3.10, <3.14"
+dependencies = [
+    "gemseo[all] >=6.3,<7",
+    "gemseo-bilevel-outer-approximation >=0.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "covdefaults >=2",
+    "pytest >=7,<9",
+    "pytest-cov >=5",
+    "pytest-xdist >=3",
+]
+doc = [
+    "black",
+    "griffe-fieldz",
+    "griffe-inherited-docstrings",
+    "markdown-exec[ansi]",
+    "mike",
+    "mkdocs-bibtex",
+    "mkdocs-gallery",
+    "mkdocs-gen-files",
+    "mkdocs-include-markdown-plugin",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs-section-index",
+    "mkdocstrings[python]",
+]
+
+[project.urls]
+Homepage = "https://github.com/SimoneConiglio/Optimization-algorithms"
+Source = "https://github.com/SimoneConiglio/Optimization-algorithms"
+Issues = "https://github.com/SimoneConiglio/Optimization-algorithms/issues"
+
+[project.entry-points]
+gemseo_plugins = { gemseo-algos-lab = "gemseo_algos_lab" }
+
+[build-system]
+requires = [
+    "setuptools",
+    "setuptools_scm[toml]",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]

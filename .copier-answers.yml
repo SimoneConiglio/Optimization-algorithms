@@ -1,0 +1,13 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 47d5c19
+_src_path: /tmp/copier-gemseo
+author_email: simone.coniglio91@gmail.com
+author_name: Simone Coniglio
+gemseo_min_version: '6.3'
+package_is_a_gemseo_plugin: true
+project_is_open_source: true
+project_name: gemseo-algos-lab
+project_name_suffix: algos-lab
+project_slug: gemseo_algos_lab
+short_description: A laboratory for exploring optimization algorithms built on GEMSEO
+use_gemseo_develop: false
