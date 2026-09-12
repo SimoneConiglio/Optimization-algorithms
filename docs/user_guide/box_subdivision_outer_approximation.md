@@ -192,6 +192,9 @@ Note that the master already exposes `number_of_parallel_points` and
 `number_of_processes` settings, so part of the multi-cut parallelism described
 below may not need to be written from scratch.
 
+The method is then benchmarked against the enumeration of the boxes, see
+**Benchmarking** below.
+
 ## Open questions
 
 1. **Static vs. adaptive subdivision.** A fixed subdivision is either too coarse
@@ -201,6 +204,28 @@ below may not need to be written from scratch.
 3. **Choice of $m_i$.** No obvious a priori rule; it should probably be driven
    by a curvature estimate, which is already needed for the convexification.
 
+## The sub-problem needs a starting point inside its box
+
+The sub-problem of a box is solved by a local algorithm, so its starting point
+decides which local minimum of the box it reaches. GEMSEO offers two policies,
+neither of which suits a subdivision: `reset_x0_before_opt` restarts every
+sub-problem from the initial value of the design space, which lies outside of
+all the boxes but one, and warm-starting from the previous sub-problem makes the
+result depend on the order in which the boxes are visited. Setting the starting
+point from the adapter inputs is not an option either, since the main problem
+decides the box, not the design variables.
+
+This is not a detail. On the Rastrigin benchmark below, with the default policy,
+*even the exhaustive enumeration of the 100 boxes missed the global optimum*,
+returning $1.92$ instead of $0$: most boxes started their sub-problem from a
+point outside themselves, and the local solver stalled on a face instead of
+reaching the interior minimum.
+
+`create_box_start_adapter_class` returns a `Benders` scenario adapter that
+starts each sub-problem at the center of the selected box, which is feasible by
+construction and independent of the order of the boxes. With it, the same
+enumeration returns $0$.
+
 ## Benchmarking
 
 The claim to establish is that the method reaches the global optimum after
@@ -208,10 +233,39 @@ solving **far fewer than $\prod_i m_i$ sub-problems**. The baseline to beat is
 therefore *multistart local NLP, one start per box*, which is embarrassingly
 parallel and needs no cuts at all.
 
-`gemseo-benchmark` is the harness for this: performance histories, Moré–Wild
-data profiles and reports, with the number of sub-problem solves as the budget
-unit. It is a library rather than an algorithm plugin, and is declared in the
-`benchmark` dependency group.
+`create_box_samples` builds the one-hot vector of every box, so that baseline is
+simply the `CustomDOE` driver of the main problem: both methods then run the
+very same sub-problem machinery through the same `Benders` formulation and the
+same main-problem design space, and differ only by the driver. The budget is
+counted in executions of the objective discipline.
+
+On the Rastrigin function in two dimensions over $[-4.1, 5.9]^2$, subdivided
+into $10 \times 10 = 100$ boxes, from three random starting points
+(`benchmarks/`):
+
+| method | objective | boxes solved | discipline executions |
+|--------|-----------|--------------|-----------------------|
+| enumeration | $0.0$ | 100 | 1427 |
+| outer approximation | $0.0$ | 20 to 21 | 288 to 299 |
+
+about **five times cheaper for the same optimum**.
+
+Two caveats, both measured:
+
+- The result depends entirely on the convexification. With the default
+  `convexification_constant` of $0$, the cuts are invalid on a non-convex
+  problem and the master converges after **two** sub-problems, on $f = 17.9$.
+  The table above uses a constant of $10$ with `adapt=True`; a constant of $100$
+  without adaptation reaches $0.995$.
+- The method is not exhaustive. Over six starting points, it reached the exact
+  global optimum on four, and stopped at $0.995$, the neighbouring local
+  minimum, on the other two. Enumeration is exhaustive over the boxes and always
+  returns $0$. The trade is five times fewer executions against that guarantee.
+
+The Moré–Wild data profiles of `gemseo-benchmark` are the next step: both
+methods are now drivers of the same problem, which is what its
+`MDOProblemConfiguration` needs to compare them as two algorithm
+configurations.
 
 ## Parallelism
 

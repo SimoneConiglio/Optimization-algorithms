@@ -16,12 +16,15 @@
 
 from __future__ import annotations
 
+from itertools import product
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+from typing import Final
 
 from gemseo_bilevel_outer_approximation.algos.design_space.catalogue_design_space import (  # noqa: E501
     CatalogueDesignSpace,
 )
+from numpy import zeros
 
 from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
 
@@ -30,6 +33,9 @@ if TYPE_CHECKING:
 
     from gemseo.algos.design_space import DesignSpace
     from numpy import ndarray
+
+DEFAULT_MAX_BOXES: Final[int] = 100_000
+"""The default limit on the number of boxes that :func:`.create_box_samples` builds."""
 
 
 def create_box_design_space(
@@ -105,3 +111,59 @@ def create_box_design_space(
         )
 
     return box_design_space
+
+
+def create_box_samples(
+    subdivision: BoxSubdivision,
+    one_hot_names: Mapping[str, str] = MappingProxyType({}),
+    max_boxes: int = DEFAULT_MAX_BOXES,
+) -> ndarray:
+    """Return the one-hot vectors of every box of a subdivision.
+
+    Passing these samples to the ``CustomDOE`` driver of the main problem solves
+    the sub-problem of every box. This is the reference against which the outer
+    approximation has to be compared: it is exhaustive over the boxes, and it is
+    embarrassingly parallel, so the outer approximation is only worth its
+    complexity if it solves substantially fewer sub-problems.
+
+    Args:
+        subdivision: The Cartesian subdivision of the design space.
+        one_hot_names: The name of the one-hot variable of each subdivided
+            variable, used to order the columns as in the design space.
+        max_boxes: The maximum number of boxes to enumerate.
+
+    Returns:
+        The one-hot vectors, shaped ``(n_boxes, n_binaries)``.
+
+    Raises:
+        ValueError: If the subdivision has more boxes than ``max_boxes``.
+    """
+    n_boxes = subdivision.n_boxes
+    if n_boxes > max_boxes:
+        msg = (
+            f"The subdivision has {n_boxes} boxes, more than the maximum of "
+            f"{max_boxes}; enumerating them is not tractable."
+        )
+        raise ValueError(msg)
+
+    names = list(subdivision.get_one_hot_names(one_hot_names))
+    sizes = subdivision.sizes
+    n_subdivisions = subdivision.n_subdivisions
+    # One choice per component, ordered as the one-hot blocks of the design space.
+    components = [
+        (name, component) for name in names for component in range(sizes[name])
+    ]
+    offsets = {}
+    offset = 0
+    for name in names:
+        offsets[name] = offset
+        offset += sizes[name] * n_subdivisions[name]
+
+    samples = zeros((n_boxes, offset))
+    ranges = [range(n_subdivisions[name]) for name, _ in components]
+    for row, indexes in enumerate(product(*ranges)):
+        for (name, component), index in zip(components, indexes, strict=True):
+            column = offsets[name] + component * n_subdivisions[name] + index
+            samples[row, column] = 1.0
+
+    return samples

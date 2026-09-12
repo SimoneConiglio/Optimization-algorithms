@@ -25,6 +25,7 @@ from numpy import array
 from numpy.testing import assert_allclose
 
 from gemseo_algos_lab.algos.design_space.box_design_space import create_box_design_space
+from gemseo_algos_lab.algos.design_space.box_design_space import create_box_samples
 from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
 from gemseo_algos_lab.disciplines.box_constraint import BoxConstraint
 
@@ -155,3 +156,32 @@ def test_unknown_variable(subdivision) -> None:
     other_design_space.add_variable("w", lower_bound=0.0, upper_bound=1.0, value=0.5)
     with pytest.raises(ValueError, match=r"not in the design space: \['x', 'y'\]"):
         create_box_design_space(subdivision, other_design_space)
+
+
+def test_box_samples(subdivision) -> None:
+    """Check the one-hot vectors enumerating every box."""
+    samples = create_box_samples(subdivision)
+    # x has 2 components with 4 subdivisions, y has 1 component with 2.
+    assert samples.shape == (4 * 4 * 2, 2 * 4 + 1 * 2)
+    assert samples.shape[0] == subdivision.n_boxes
+    assert samples.shape[1] == subdivision.n_binaries
+    # Each component of each variable selects exactly one subdivision.
+    assert (samples.sum(axis=1) == 3).all()
+    # No two boxes are the same.
+    assert len({tuple(row) for row in samples}) == subdivision.n_boxes
+
+
+def test_box_samples_match_the_design_space(subdivision, box_design_space) -> None:
+    """Check that the samples have the layout of the main problem design space."""
+    main_design_space = deepcopy(box_design_space).filter_non_categorical()
+    size = sum(
+        main_design_space.variable_sizes[name]
+        for name in main_design_space.variable_names
+    )
+    assert create_box_samples(subdivision).shape[1] == size
+
+
+def test_too_many_boxes(subdivision) -> None:
+    """Check the error raised when the boxes cannot be enumerated."""
+    with pytest.raises(ValueError, match=r"more than the maximum of 4"):
+        create_box_samples(subdivision, max_boxes=4)

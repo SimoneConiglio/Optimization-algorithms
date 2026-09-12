@@ -41,3 +41,8 @@ and this project adheres to
   vector-valued constraint, with its analytic Jacobian.
 - `create_box_design_space`, building the design space of both levels.
 - `BoxSubdivision.locate` and `BoxSubdivision.get_one_hot_names`.
+- `create_box_start_adapter_class`, a `Benders` scenario adapter starting
+  each sub-problem at the center of its box.
+- `create_box_samples`, the one-hot vectors of every box, to solve them all
+  with the `CustomDOE` driver.
+- Benchmark comparing the outer approximation with that enumeration.
