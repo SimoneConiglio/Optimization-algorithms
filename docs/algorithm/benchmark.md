@@ -390,57 +390,58 @@ Griewank, DIRECT is closer.
 claim for the method has to be made against it rather than against multistart
 alone.
 
-## The subdivision has to resolve the basins
+## The subdivision has to resolve the basins, and it can afford to
 
-Sweeping the number of subdivisions per variable in five dimensions, in the
-`adaptive` configuration, over three starting points: median distance to the
-optimum, the number of runs reaching it, and the median number of evaluations.
+The number of boxes is the Cartesian product of the subdivisions, so it explodes
+with the dimension, but the master does not see it: it sees the **one-hot
+binaries**, $\sum_j m_j$, which grow linearly. Five variables with ten
+subdivisions each is $100\,000$ boxes and only $50$ binaries.
 
-| problem | $m=2$ (32 boxes) | $m=3$ (243) | $m=4$ (1024) | $m=10$ ($10^5$) |
-|---------|------------------|-------------|--------------|------------------|
-| Styblinski-Tang | **$0.00$, 3/3, 481** | $0.00$, 3/3, 641 | $0.00$, 3/3, 783 | $0.00$, 3/3, 1387 |
-| Rastrigin | **$4.98$**, 0/3, 707 | $4.98$, 0/3, 1882 | $6.70$, 0/3, 950 | $15.92$, 0/3, 1319 |
-| Ackley | **$9.71$**, 0/3, 1428 | $14.90$, 1/3, 2500 | $14.70$, 0/3, 2500 | $17.86$, 0/3, 1946 |
+That is decisive, and it corrects an earlier version of this page. What that
+version measured was a master whose trust region was left at its default radius
+of ten, against a design space whose diameter is $n(m-1) = 45$ at that density:
+the master could change one or two variables at a time out of five. Sized to the
+diameter, the same runs behave differently.
 
-Two readings, one of which corrects an earlier version of this page.
+Five variables, ten subdivisions each, the `adaptive` configuration with the
+radius sized:
 
-**The number of boxes is a matter of cost, not of feasibility.**
-Styblinski-Tang is solved from every starting point at *every* density, from
-$32$ boxes to $100\,000$, the cost merely growing from $481$ to $1387$
-evaluations: the master still finds its way among $50$ binaries. The coarsest
-subdivision is therefore the right default, being the cheapest, not the only one
-that works.
+| problem | budget $2500$ | budget $5000$ | for comparison, $m = 2$ (32 boxes) |
+|---------|---------------|---------------|------------------------------------|
+| Rastrigin | $1.00$ · 2500 · 1/3 | **$0.00$ · 3357 · 2/3** | $4.98$ · 899 · 0/3 |
+| Ackley | $9.14$ · 2500 · 0/3 | $7.08$ · 4665 · 0/3 | $9.71$ · 1429 · 0/3 |
+| Styblinski-Tang | $0.00$ · 905 · 1/3 | $0.00$ · 905 · 1/3 | $0.00$ · 466 · 3/3 |
+| Griewank | $0.23$ · 2500 · 0/3 | $0.11$ · 4964 · 0/3 | $0.06$ · 1644 · 0/3 |
+
+**Rastrigin in five dimensions is solved**, from two starting points out of three,
+for about $3400$ evaluations. No baseline does that: at $2500$ evaluations
+multistart returns $3.98$, CMA-ES $8.96$ and DIRECT $4.98$, and at $2500$ the
+method already returns $1.00$. The earlier statement that Rastrigin's $10^n$
+basins are out of reach of any tractable subdivision was wrong: $m = 10$ resolves
+them, $50$ binaries is a small master, and only the radius stood in the way.
+
+It is not a free choice, though. Ackley improves, $9.71$ to $7.08$, for three
+times the cost and still without reaching the optimum. Styblinski-Tang, whose
+basins $m = 2$ already resolves, keeps the optimum in the median but reaches it
+from one starting point out of three instead of three, for twice the price.
+Griewank gets worse. So the rule is the one the section title states: the
+subdivision has to **resolve the basins**, and refining beyond that spends
+sub-problems on boxes that were already unimodal.
+
+What does scale is the master. The cost of a run is the number of boxes it
+solves, and the budget buys about $30$ to $60$ of them whatever the subdivision,
+so what a fine subdivision demands is not more boxes but a cut model with $n
+\times m$ coefficients identified from that handful of cuts. That is why the
+five-variable runs need a few thousand evaluations where the two-variable ones
+need a few hundred.
 
 :::{note}
-An earlier version of this page reported Styblinski-Tang degrading from $0.00$
-at $m=2$ to $35.07$ at $m=10$ and concluded that too many boxes make the cut
-model unable to discriminate. That measurement mixed the two mechanisms of the
-master; with the adaptive repair alone, the degradation disappears. What
-collapses under a large number of boxes is the fixed convexification constant,
-not the method: run instead in the `pure_convexification` configuration, the
-same Styblinski-Tang goes from $0.00$, 3/3 at $m=2$ to $65.42$, 0/3 at $m=10$,
-the run stopping after $151$ evaluations, the master being infeasible almost at
-once.
+An earlier version of this page reported this density as a failure, Rastrigin at
+$m = 10$ returning $15.92$ and Styblinski-Tang $35.07$, and concluded that the
+method scales with the number of basins rather than with the number of variables.
+The first half of that conclusion survives; the measurement does not, having been
+made with a trust region four times smaller than the design space.
 :::
-
-**What the subdivision must resolve is the landscape, not the dimension.**
-Styblinski-Tang has about $2^n$ basins and even $m=2$ separates them, hence the
-perfect score at every density. Rastrigin, whose minima are one unit apart over a
-range of ten, has about $10^n$ of them: no tractable subdivision separates them
-in five dimensions, and refining does not help, it hurts, the boxes staying
-multimodal while the master grows. Ackley behaves the same way.
-
-The requirement is therefore on the **basins** rather than on the boxes: each box
-has to be close enough to unimodal for its local solve to return the box optimum,
-which is what the cuts assume. That is the honest answer to how the method
-scales: it scales with the number of basins, not with the number of variables,
-and it suits a problem with a moderate number of them.
-
-The default keeps the number of boxes in the hundreds, which is a stopgap
-justified by cost: it is the cheapest density among those that do as well. The
-number of subdivisions that actually suits a problem follows the spacing of its
-basins, which the method does not know, and estimating it, from the curvature or
-from a first sampling, is the most valuable next step.
 
 ## At five variables, which knob to turn
 
@@ -551,11 +552,17 @@ Established:
   normalized one being slightly ahead and cheaper to assemble;
 - where the subdivision resolves the basins, the method reaches the optimum for
   three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
-- where it does not, the method is the worst of the four, and no setting of
-  either mechanism recovers it;
+- a subdivision fine enough to resolve them stays tractable, the master growing
+  with the binaries and not with the boxes: Rastrigin in five dimensions, out of
+  reach of every baseline here, is solved over $100\,000$ boxes once the trust
+  region is sized to the design space;
+- where the subdivision does not resolve the basins, the method is the worst of
+  the four, and no setting of either mechanism recovers it;
 - subdividing only the variables the objective is multimodal in solves a problem
   that subdividing every variable coarsely does not, and loses when the
   multimodality is spread over all of them;
+- the radius of the trust region has to start at the diameter of the design
+  space, $\sum_j (m_j - 1)$, the master's default of ten being unrelated to it;
 - the number of boxes costs evaluations but does not, by itself, defeat the
   master: with the adaptive repair, Styblinski-Tang in five dimensions is solved
   from every starting point over $32$ boxes as well as over $100\,000$.

@@ -83,10 +83,12 @@ and this project adheres to
   number, and which the benchmarks now sweep over the range where it is worth
   using, reporting the cost as a fraction of the enumeration it replaces.
 - `benchmarks/configurations.py` sizes the trust region of the master to the
-  design space for `pure_convexification`, which needs it to reach the optimum
-  from every starting point, and leaves it alone for `adaptive`, which reaches
-  it either way and only pays for the wider region. The comparison with the
-  baselines is reported both ways.
+  design space for every configuration. The master's default radius of ten is
+  unrelated to that space, whose diameter is the sum over the components of the
+  number of subdivisions minus one, and starting below it confines the search:
+  with five variables and ten subdivisions each, that is the difference between
+  solving Rastrigin, which no baseline here does, and returning a gap of
+  sixteen.
 - `benchmarks/refine_some_variables.py`, comparing a coarse subdivision of every
   variable with a fine subdivision of some of them, and the `partly_multimodal`
   problem it needs, multimodal in two variables and convex in the others.

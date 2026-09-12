@@ -143,7 +143,7 @@ relaxed problem, and they are not meant to be combined:
 | `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
 | `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [the benchmark](benchmark.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
 | `number_of_parallel_points` | $4$ | decisive: with a single point the master stops after two or three boxes |
-| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. The master's own default of $10$ is smaller than the design space as soon as the subdivision is not coarse, and then confines a run started in a high-index box, see [the benchmark](benchmark.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
+| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. Its own default of $10$ is unrelated to the design space, whose diameter is $\sum_j (m_j - 1)$: at five variables and ten subdivisions that is $45$, and leaving the radius at ten is the difference between solving Rastrigin and returning a gap of sixteen, see [the benchmark](benchmark.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
 | `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
 
@@ -151,7 +151,7 @@ And one choice that is not a setting of the algorithm but of the subdivision:
 
 | Choice | Recommended | Why |
 |--------|-------------|-----|
-| `n_subdivisions` | such that $\prod_i m_i$ stays in the hundreds, over the variables the objective is multimodal in | too many boxes and the cuts cannot tell them apart; too few and a box is no longer unimodal. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins) |
+| `n_subdivisions` | fine enough to resolve the basins, over the variables the objective is multimodal in | a box that still holds several basins defeats the local solve, and the number of boxes costs evaluations rather than master size, the binaries growing linearly. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins-and-it-can-afford-to) |
 
 ## Subdividing some of the variables only
 

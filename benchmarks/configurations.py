@@ -90,30 +90,38 @@ constants reach the optimum from five or six starting points out of eight.
 See `tune_convexification.py`.
 """
 
-SIZED_TRUST_REGION = frozenset({"pure_convexification"})
-"""The configurations whose trust region is sized to the design space.
-
-The master restricts each iteration to a neighbourhood of the incumbent box, of
-radius ``max_step`` in the distance induced by the weights of the boxes, and its
-own default radius of ten has nothing to do with the design space:
-:attr:`.BoxSubdivision.max_step` is the diameter of that space in the same
-distance, eighteen for two variables with ten subdivisions but only five for five
-variables with two.
-
-Setting the radius to that diameter is decisive for the pure convexification,
-which then reaches the optimum from all eight starting points of the Rastrigin
-benchmark instead of six, and pointless for the adaptive repair, which reaches it
-either way and only pays for the wider region: twenty-four to fifty-six boxes
-instead of twenty to thirty-six for the normalized formulation, and $786$
-evaluations instead of $519$ on the two-dimensional baseline. Hence sizing the
-one and not the other, which is a measurement rather than a principle.
-"""
-
 CONFIGURATIONS = MappingProxyType({
     "adaptive": ADAPTIVE,
     "pure_convexification": PURE_CONVEXIFICATION,
 })
 """The configurations of the master, by name."""
 
+CONFIGURATION_NAMES = tuple(CONFIGURATIONS)
+"""The names of the configurations of the master."""
+
 DEFAULT_CONFIGURATION = "adaptive"
 """The configuration reaching the optimum with the fewest boxes."""
+
+SIZED_TRUST_REGION = frozenset(CONFIGURATION_NAMES)
+"""The configurations whose trust region is sized to the design space.
+
+The master restricts each iteration to a neighbourhood of the incumbent box, of
+radius ``max_step`` in the distance induced by the weights of the boxes, and its
+own default radius of ten has nothing to do with that space:
+:attr:`.BoxSubdivision.max_step` is its diameter in the same distance, five for
+five variables with two subdivisions but forty-five for five variables with ten.
+Starting from the diameter and letting the master shrink it is what the outer
+approximation assumes; starting below it confines the search from the first
+iteration.
+
+That is decisive as soon as the subdivision is fine. On Rastrigin with five
+variables and ten subdivisions each, a hundred thousand boxes but only fifty
+binaries, the run reaches the global optimum from two starting points out of
+three with the radius at forty-five, and returns a gap of sixteen with the radius
+at ten. It is also what the pure convexification needs in two dimensions, where
+it reaches the optimum from all eight starting points instead of six.
+
+The price is paid on the coarse subdivisions, where the wider region only buys
+more boxes: the two-dimensional Rastrigin costs $786$ evaluations instead of
+$519$ for the same optimum.
+"""
