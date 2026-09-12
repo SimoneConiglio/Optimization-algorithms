@@ -87,6 +87,9 @@ and this project adheres to
   from every starting point, and leaves it alone for `adaptive`, which reaches
   it either way and only pays for the wider region. The comparison with the
   baselines is reported both ways.
+- `benchmarks/refine_some_variables.py`, comparing a coarse subdivision of every
+  variable with a fine subdivision of some of them, and the `partly_multimodal`
+  problem it needs, multimodal in two variables and convex in the others.
 - `BoxSubdivision.max_step`, the largest trust-region step of the master in the
   distance induced by the weights of the boxes, to be passed as its `max_step`
   when a run stops early: the master's own default of ten is smaller than the

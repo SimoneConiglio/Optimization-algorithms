@@ -442,6 +442,95 @@ number of subdivisions that actually suits a problem follows the spacing of its
 basins, which the method does not know, and estimating it, from the curvature or
 from a first sampling, is the most valuable next step.
 
+## At five variables, which knob to turn
+
+The two-dimensional benchmark is where the mechanisms were tuned, and what works
+there does not carry over unchanged. Two questions are open at five variables:
+which of the two mechanisms to use, and whether to subdivide every variable
+coarsely or a few of them finely.
+
+### The constant is the better buy
+
+Same subdivision, two per variable, equal budget, three starting points:
+
+| problem | adaptive | pure convexification |
+|---------|----------|----------------------|
+| Rastrigin | $4.98$ · 899 · 0/3 | $4.98$ · **606** · 0/3 |
+| Ackley | $9.71$ · 1429 · 0/3 | $14.43$ · 598 · 0/3 |
+| Styblinski-Tang | $0.00$ · 466 · 3/3 | $0.00$ · **458** · 3/3 |
+| Griewank | $0.06$ · 1644 · 0/3 | $0.06$ · **1277** · 0/3 |
+
+Same answer on three problems out of four for a quarter to a third less, the
+exception being Ackley. Sweeping each mechanism's constant per problem says where
+that comes from:
+
+| problem | constant | $1$ | $10$ | $100$ | $1000$ |
+|---------|----------|-----|------|-------|--------|
+| Rastrigin | convexification | $28.85$ | $8.57$ | **$4.98$** | $8.57$ |
+| Rastrigin | margin | $8.57$ | $8.57$ | **$4.98$** | $4.98$ |
+| Ackley | convexification | $14.43$ | $14.43$ | $14.43$ | $14.43$ |
+| Ackley | margin | $14.43$ | $14.43$ | **$9.71$** | $9.71$ |
+| Styblinski-Tang | convexification | $28.27$ | $28.27$ | **$0.00$** | $0.00$ |
+| Styblinski-Tang | margin | $0.00$ | **$0.00$ (230)** | $0.00$ | $0.00$ |
+| Griewank | convexification | $0.08$ | $0.06$ | $0.06$ | $0.06$ |
+| Griewank | margin | **$0.06$ (422)** | $0.06$ | $0.06$ | $0.06$ |
+
+Three things follow. The constant is **not** to be scaled down with the objective
+range as simply as the two-dimensional case suggested: Griewank spans about two
+and is served as well by any value, while Styblinski-Tang spans hundreds and the
+convexification needs a hundred exactly. Where a smaller constant suffices it is
+also cheaper, Styblinski-Tang being solved for $230$ evaluations at a margin of
+ten instead of $466$ at a hundred, so the constant is worth sweeping downwards
+once a configuration works. And Ackley is insensitive to every value of either
+mechanism, which says the master is not what fails there.
+
+### Refining some variables only, and when it pays
+
+The number of boxes is the Cartesian product of the subdivisions, so subdividing
+only the variables that need it keeps the master small, the others staying
+ordinary variables of the sub-problem. The package does this already:
+
+```python
+subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+```
+
+On the benchmark problems, which are multimodal in **every** variable, it loses:
+
+| problem | 5 split, $m=2$ (32 boxes) | 3 split, $m=4$ (64) | 2 split, $m=10$ (100) | 1 split, $m=10$ (10) |
+|---------|---------------------------|---------------------|-----------------------|----------------------|
+| Rastrigin | **$4.98$** | $9.95$ | $9.95$ | $18.90$ |
+| Ackley | $9.71$ | $13.64$ | **$9.53$** | $16.07$ |
+| Styblinski-Tang | **$0.00$, 3/3** | $14.14$, 1/3 | $28.27$ | $28.27$ |
+
+The reason is the one already established: a variable left unsubdivided keeps all
+of its basins inside every box, and the local solve returns the one it starts in.
+Styblinski-Tang has two basins per variable, so leaving three of the five out
+leaves eight basins in every box, and the run that solved every starting point
+with thirty-two boxes now solves none with a hundred.
+
+On an objective whose multimodality is concentrated, `partly_multimodal`, which is
+Rastrigin in two variables plus a paraboloid in the other three, it wins clearly:
+
+| subdivision | boxes | gap | cost | reached |
+|-------------|-------|-----|------|---------|
+| 5 split, $m=2$ | 32 | $1.99$ | 708 | 0/3 |
+| 3 split, $m=4$ | 64 | **$0.00$** | 1165 | **3/3** |
+| 2 split, $m=10$ | 100 | **$0.00$** | 1329 | **3/3** |
+| 2 split, $m=5$ | 25 | $1.99$ | 950 | 0/3 |
+| 2 split, $m=3$ | 9 | $1.99$ | 381 | 0/3 |
+
+Subdividing every variable coarsely fails from every starting point; subdividing
+the two multimodal ones finely succeeds from every one. And the requirement is
+the same as everywhere else, the subdivision resolving the basins: Rastrigin's
+minima are a unit apart over a range of ten, so $m=10$ works on those two
+variables and $m=5$ or $m=3$ does not, at a third of the cost and none of the
+result.
+
+So the rule is not about the number of variables but about **where the
+multimodality is**: subdivide the variables the objective is multimodal in, as
+finely as their basins require, and leave the others to the sub-problem. What the
+method still cannot do is find out by itself which ones those are.
+
 ## What this does and does not establish
 
 Established:
@@ -464,6 +553,9 @@ Established:
   three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
 - where it does not, the method is the worst of the four, and no setting of
   either mechanism recovers it;
+- subdividing only the variables the objective is multimodal in solves a problem
+  that subdividing every variable coarsely does not, and loses when the
+  multimodality is spread over all of them;
 - the number of boxes costs evaluations but does not, by itself, defeat the
   master: with the adaptive repair, Styblinski-Tang in five dimensions is solved
   from every starting point over $32$ boxes as well as over $100\,000$.

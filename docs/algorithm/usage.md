@@ -151,7 +151,27 @@ And one choice that is not a setting of the algorithm but of the subdivision:
 
 | Choice | Recommended | Why |
 |--------|-------------|-----|
-| `n_subdivisions` | such that $\prod_i m_i$ stays in the hundreds | too many boxes and the cuts cannot tell them apart; too few and a box is no longer unimodal. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins) |
+| `n_subdivisions` | such that $\prod_i m_i$ stays in the hundreds, over the variables the objective is multimodal in | too many boxes and the cuts cannot tell them apart; too few and a box is no longer unimodal. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins) |
+
+## Subdividing some of the variables only
+
+The number of boxes being the Cartesian product of the subdivisions, subdividing
+every variable is out of reach as soon as there are a few of them. Pass the
+variables to subdivide, and the others stay ordinary variables of the
+sub-problem:
+
+```python
+subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+```
+
+This is worth it when the objective is close to unimodal in the variables left
+out: one of them keeps all of its basins inside every box, and the local solve
+returns the one it starts in. See
+[the benchmark](benchmark.md#refining-some-variables-only-and-when-it-pays),
+where it solves a problem that subdividing every variable coarsely does not, and
+loses on the problems that are multimodal in every variable.
+
+## Sweeping the settings
 
 `min_dfk` is problem-dependent, being expressed in the units of the objective.
 Sweep it with `benchmarks/tune_convexification.py`, which sweeps each mechanism

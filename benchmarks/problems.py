@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from typing import Final
 
 from gemseo.core.discipline import Discipline
 from numpy import arange
@@ -190,6 +191,46 @@ class Problem:
     """The global minimum, as a function of the dimension."""
 
 
+N_MULTIMODAL: Final[int] = 2
+"""The number of multimodal variables of :func:`.partly_multimodal`."""
+
+
+def partly_multimodal(x: ndarray) -> float:
+    """Rastrigin on the first variables, a paraboloid on the others.
+
+    The other problems are multimodal in every variable, which is the worst case
+    for a subdivision refining only some of them: whatever is left unsubdivided
+    keeps several basins inside each box, and the local solve returns the one it
+    starts in. This one concentrates the multimodality in
+    :data:`.N_MULTIMODAL` variables, which is the case a partial refinement is
+    for, and the shape of an industrial problem whose difficulty lies in a few
+    parameters.
+
+    Args:
+        x: The design value.
+
+    Returns:
+        The objective value.
+    """
+    head, tail = x[:N_MULTIMODAL], x[N_MULTIMODAL:]
+    return float(np_sum(10.0 + head**2 - 10.0 * cos(2.0 * pi * head)) + np_sum(tail**2))
+
+
+def partly_multimodal_gradient(x: ndarray) -> ndarray:
+    """The gradient of :func:`.partly_multimodal`.
+
+    Args:
+        x: The design value.
+
+    Returns:
+        The gradient.
+    """
+    gradient = 2.0 * x
+    head = x[:N_MULTIMODAL]
+    gradient[:N_MULTIMODAL] += 20.0 * pi * sin(2.0 * pi * head)
+    return gradient
+
+
 PROBLEMS: dict[str, Problem] = {
     problem.name: problem
     for problem in (
@@ -223,6 +264,14 @@ PROBLEMS: dict[str, Problem] = {
             griewank_gradient,
             -58.1,
             61.9,
+            lambda n: 0.0,  # noqa: ARG005
+        ),
+        Problem(
+            "partly_multimodal",
+            partly_multimodal,
+            partly_multimodal_gradient,
+            RASTRIGIN_LOWER_BOUND,
+            RASTRIGIN_UPPER_BOUND,
             lambda n: 0.0,  # noqa: ARG005
         ),
     )
