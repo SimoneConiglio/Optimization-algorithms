@@ -28,10 +28,12 @@ from numpy import cos
 from numpy import sin
 from numpy import zeros
 
-from gemseo_algos_lab.algos.design_space.box_design_space import create_box_design_space
-from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_algos_lab.disciplines.box_constraint import BoxConstraint
-from gemseo_algos_lab.disciplines.scenario_adapters.box_start import (
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
+    create_box_design_space,
+)
+from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
+from gemseo_box_subdivision.disciplines.scenario_adapters.box_start import (
     create_box_start_adapter_class,
 )
 

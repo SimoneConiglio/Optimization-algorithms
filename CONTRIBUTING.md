@@ -25,7 +25,7 @@ insert the license headers and check the commit messages with
 ## Layout
 
 ```text
-src/gemseo_algos_lab/
+src/gemseo_box_subdivision/
 └── algos/
     └── opt/            # the optimization libraries contributed to GEMSEO
 tests/                  # mirrors the layout of src
@@ -35,7 +35,7 @@ benchmarks/             # the algorithm benchmarks
 
 ## Adding an optimization algorithm
 
-Create `src/gemseo_algos_lab/algos/opt/<algo_name>/` containing:
+Create `src/gemseo_box_subdivision/algos/opt/<algo_name>/` containing:
 
 1. `<algo_name>_settings.py`, with a settings model deriving from
    `BaseOptimizerSettings` (or a more specific base such as `BaseMILPSettings`)

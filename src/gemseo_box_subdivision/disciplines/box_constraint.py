@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
     from gemseo.typing import StrKeyMapping
 
-    from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
+    from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
 
 
 class BoxConstraint(Discipline):

@@ -1,9 +1,9 @@
 [project]
-name = "gemseo-algos-lab"
+name = "gemseo-box-subdivision"
 authors = [
     {name = "Simone Coniglio", email = "simone.coniglio91@gmail.com"}
 ]
-description = "A laboratory for exploring optimization algorithms built on GEMSEO"
+description = "Box-subdivision outer approximation, a GEMSEO plugin for multimodal problems"
 readme = "README.md"
 license = "LGPL-3.0"
 license-files = ["LICENSE.txt"]
@@ -49,12 +49,12 @@ doc = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SimoneConiglio/Optimization-algorithms"
-Source = "https://github.com/SimoneConiglio/Optimization-algorithms"
-Issues = "https://github.com/SimoneConiglio/Optimization-algorithms/issues"
+Homepage = "https://github.com/SimoneConiglio/gemseo-box-subdivision"
+Source = "https://github.com/SimoneConiglio/gemseo-box-subdivision"
+Issues = "https://github.com/SimoneConiglio/gemseo-box-subdivision/issues"
 
 [project.entry-points]
-gemseo_plugins = { gemseo-algos-lab = "gemseo_algos_lab" }
+gemseo_plugins = { gemseo-box-subdivision = "gemseo_box_subdivision" }
 
 [build-system]
 requires = [

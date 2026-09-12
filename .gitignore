@@ -2,7 +2,7 @@
 /dist
 /.tox
 *.pyc
-/src/gemseo_algos_lab.egg-info
+/src/gemseo_box_subdivision.egg-info
 
 /.project
 /.pydevproject

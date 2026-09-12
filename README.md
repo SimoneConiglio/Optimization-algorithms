@@ -7,13 +7,13 @@ http://creativecommons.org/licenses/by-sa/4.0/ or send a letter to Creative
 Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# gemseo-algos-lab
+# gemseo-box-subdivision
 
-[![PyPI](https://img.shields.io/pypi/v/gemseo-algos-lab)](https://pypi.org/project/gemseo-algos-lab/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/gemseo-algos-lab)](https://pypi.org/project/gemseo-algos-lab/)
-[![PyPI - License](https://img.shields.io/pypi/l/gemseo-algos-lab)](https://www.gnu.org/licenses/lgpl-3.0.en.html)
-[![CI](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/ci.yml/badge.svg)](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/ci.yml)
-[![Documentation](https://github.com/SimoneConiglio/Optimization-algorithms/actions/workflows/docs.yml/badge.svg)](https://simoneconiglio.github.io/Optimization-algorithms/)
+[![PyPI](https://img.shields.io/pypi/v/gemseo-box-subdivision)](https://pypi.org/project/gemseo-box-subdivision/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/gemseo-box-subdivision)](https://pypi.org/project/gemseo-box-subdivision/)
+[![PyPI - License](https://img.shields.io/pypi/l/gemseo-box-subdivision)](https://www.gnu.org/licenses/lgpl-3.0.en.html)
+[![CI](https://github.com/SimoneConiglio/gemseo-box-subdivision/actions/workflows/ci.yml/badge.svg)](https://github.com/SimoneConiglio/gemseo-box-subdivision/actions/workflows/ci.yml)
+[![Documentation](https://github.com/SimoneConiglio/gemseo-box-subdivision/actions/workflows/docs.yml/badge.svg)](https://simoneconiglio.github.io/gemseo-box-subdivision/)
 
 A laboratory for exploring optimization algorithms built on
 [GEMSEO](https://gemseo.org).
@@ -21,7 +21,7 @@ A laboratory for exploring optimization algorithms built on
 ## Installation
 
 ```shell
-pip install gemseo-algos-lab
+pip install gemseo-box-subdivision
 ```
 
 Python 3.10 to 3.13. This also installs GEMSEO and
@@ -29,14 +29,14 @@ Python 3.10 to 3.13. This also installs GEMSEO and
 
 ## Documentation
 
-**<https://simoneconiglio.github.io/Optimization-algorithms/>**
+**<https://simoneconiglio.github.io/gemseo-box-subdivision/>**
 
 | Page | Contents |
 |------|----------|
-| [Methodology](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/methodology.html) | motivation, equations, convexification |
-| [Implementation](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/implementation.html) | the building blocks and their pitfalls |
-| [Usage](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/usage.html) | how to build a GEMSEO scenario |
-| [Benchmark](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/benchmark.html) | measured results against enumeration |
+| [Methodology](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html) | motivation, equations, convexification |
+| [Implementation](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/implementation.html) | the building blocks and their pitfalls |
+| [Usage](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/usage.html) | how to build a GEMSEO scenario |
+| [Benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html) | measured results against enumeration |
 
 ## What it does
 
@@ -57,13 +57,13 @@ solving all of them.
 > The convexification constant defaults to `0.0` in GEMSEO, which makes the
 > outer-approximation cuts invalid on a multimodal problem: the master converges
 > after two or three sub-problems and reports success far from the optimum. See
-> [Convexification](https://simoneconiglio.github.io/Optimization-algorithms/algorithm/methodology.html#convexification).
+> [Convexification](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html#convexification).
 
 ## Development
 
 ```shell
-git clone https://github.com/SimoneConiglio/Optimization-algorithms.git
-cd Optimization-algorithms
+git clone https://github.com/SimoneConiglio/gemseo-box-subdivision.git
+cd gemseo-box-subdivision
 python -m pip install tox tox-uv
 tox -e py3.12       # tests
 tox -e check        # pre-commit hooks
@@ -76,7 +76,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Bugs and questions
 
 Please use the
-[GitHub issue tracker](https://github.com/SimoneConiglio/Optimization-algorithms/issues).
+[GitHub issue tracker](https://github.com/SimoneConiglio/gemseo-box-subdivision/issues).
 
 ## Contributors
 

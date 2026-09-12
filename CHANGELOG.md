@@ -38,6 +38,11 @@ and this project adheres to
 
 ### Changed
 
+- The project is named `gemseo-box-subdivision`, since it is about the
+  box-subdivision outer approximation rather than a collection of
+  algorithms. The package is `gemseo_box_subdivision`.
+- The GEMSEO monogram is no longer used as the logo of the documentation,
+  being the registered mark of GEMSEO.
 - The documentation is built with Sphinx instead of MkDocs, and published on
   GitHub Pages by a dedicated workflow.
 - The documentation uses the PyData theme, with a navigation bar, a section

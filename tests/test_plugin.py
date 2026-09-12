@@ -24,10 +24,10 @@ import pytest
 from gemseo.algos.opt.factory import OptimizationLibraryFactory
 from gemseo.core.base_factory import BaseFactory
 
-import gemseo_algos_lab
-from gemseo_algos_lab.algos import opt
+import gemseo_box_subdivision
+from gemseo_box_subdivision.algos import opt
 
-PACKAGE_NAME = "gemseo_algos_lab"
+PACKAGE_NAME = "gemseo_box_subdivision"
 
 
 def _iter_module_names() -> list[str]:
@@ -39,7 +39,7 @@ def _iter_module_names() -> list[str]:
     return [
         module_info.name
         for module_info in pkgutil.walk_packages(
-            gemseo_algos_lab.__path__, prefix=f"{PACKAGE_NAME}."
+            gemseo_box_subdivision.__path__, prefix=f"{PACKAGE_NAME}."
         )
     ]
 
@@ -53,7 +53,9 @@ def test_entry_point_is_declared() -> None:
     assert PACKAGE_NAME in values
 
 
-@pytest.mark.parametrize("package", [gemseo_algos_lab, gemseo_algos_lab.algos, opt])
+@pytest.mark.parametrize(
+    "package", [gemseo_box_subdivision, gemseo_box_subdivision.algos, opt]
+)
 def test_packages_are_importable(package) -> None:
     """Check that the packages scanned by the GEMSEO factories are importable."""
     assert package.__name__.startswith(PACKAGE_NAME)

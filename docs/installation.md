@@ -10,7 +10,7 @@
 # Installation
 
 ```shell
-pip install gemseo-algos-lab
+pip install gemseo-box-subdivision
 ```
 
 This installs [GEMSEO](https://gemseo.org) and
@@ -33,8 +33,8 @@ print(OptimizationLibraryFactory().algorithms)
 ## From the sources
 
 ```shell
-git clone https://github.com/SimoneConiglio/Optimization-algorithms.git
-cd Optimization-algorithms
+git clone https://github.com/SimoneConiglio/gemseo-box-subdivision.git
+cd gemseo-box-subdivision
 python -m pip install tox tox-uv
 ```
 

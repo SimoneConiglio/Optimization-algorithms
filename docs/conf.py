@@ -22,12 +22,12 @@ from pathlib import Path
 from shutil import copyfile
 from sysconfig import get_paths
 
-REPOSITORY_URL = "https://github.com/SimoneConiglio/Optimization-algorithms"
+REPOSITORY_URL = "https://github.com/SimoneConiglio/gemseo-box-subdivision"
 
-project = "gemseo-algos-lab"
+project = "gemseo-box-subdivision"
 author = "Simone Coniglio"
 copyright = "2026, Simone Coniglio"  # noqa: A001
-release = get_version("gemseo-algos-lab")
+release = get_version("gemseo-box-subdivision")
 version = ".".join(release.split(".")[:2])
 
 extensions = [
@@ -77,7 +77,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
-html_title = "gemseo-algos-lab"
+html_title = "gemseo-box-subdivision"
 html_show_sourcelink = False
 
 # Pages without children would otherwise show an empty section navigation.
@@ -88,7 +88,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/gemseo-algos-lab/",
+            "url": "https://pypi.org/project/gemseo-box-subdivision/",
             "icon": "fa-solid fa-box",
         },
     ],
@@ -105,7 +105,7 @@ html_theme_options = {
 }
 html_context = {
     "github_user": "SimoneConiglio",
-    "github_repo": "Optimization-algorithms",
+    "github_repo": "gemseo-box-subdivision",
     "github_version": "main",
     "doc_path": "docs",
     "default_mode": "auto",

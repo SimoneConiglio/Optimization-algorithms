@@ -16,8 +16,8 @@
    :toctree: _autosummary
    :recursive:
 
-   gemseo_algos_lab.algos.design_space.box_subdivision
-   gemseo_algos_lab.algos.design_space.box_design_space
+   gemseo_box_subdivision.algos.design_space.box_subdivision
+   gemseo_box_subdivision.algos.design_space.box_design_space
 ```
 
 ## Disciplines
@@ -27,7 +27,7 @@
    :toctree: _autosummary
    :recursive:
 
-   gemseo_algos_lab.disciplines.box_constraint
-   gemseo_algos_lab.disciplines.box_mapping
-   gemseo_algos_lab.disciplines.scenario_adapters.box_start
+   gemseo_box_subdivision.disciplines.box_constraint
+   gemseo_box_subdivision.disciplines.box_mapping
+   gemseo_box_subdivision.disciplines.scenario_adapters.box_start
 ```

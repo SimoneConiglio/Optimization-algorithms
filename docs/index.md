@@ -7,7 +7,7 @@
  Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# gemseo-algos-lab
+# gemseo-box-subdivision
 
 A laboratory for exploring optimization algorithms built on
 [GEMSEO](https://gemseo.org).
@@ -21,7 +21,7 @@ multimodal non-linear problems that keeps the exploration of the design space
 and the local exploitation of a region in two distinct levels.
 
 ```{code-block} shell
-pip install gemseo-algos-lab
+pip install gemseo-box-subdivision
 ```
 
 ::::{grid} 1 2 2 2

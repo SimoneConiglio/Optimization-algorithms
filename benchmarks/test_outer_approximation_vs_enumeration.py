@@ -55,15 +55,19 @@ from numpy.random import default_rng
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.problems import Rastrigin
-from gemseo_algos_lab.algos.design_space.box_design_space import create_box_design_space
-from gemseo_algos_lab.algos.design_space.box_design_space import create_box_samples
-from gemseo_algos_lab.algos.design_space.box_design_space import (
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
+    create_box_design_space,
+)
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
+    create_box_samples,
+)
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
     create_normalized_box_design_space,
 )
-from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_algos_lab.disciplines.box_constraint import BoxConstraint
-from gemseo_algos_lab.disciplines.box_mapping import BoxMapping
-from gemseo_algos_lab.disciplines.scenario_adapters.box_start import (
+from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
+from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision.disciplines.scenario_adapters.box_start import (
     create_box_start_adapter_class,
 )
 

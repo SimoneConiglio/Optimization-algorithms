@@ -23,8 +23,8 @@ from numpy import zeros
 from numpy.random import default_rng
 from numpy.testing import assert_allclose
 
-from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_algos_lab.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 
 
 @pytest.fixture

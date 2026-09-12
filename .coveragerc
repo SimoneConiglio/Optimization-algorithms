@@ -1,6 +1,6 @@
 [run]
 plugins = covdefaults
-source = gemseo_algos_lab
+source = gemseo_box_subdivision
 
 [report]
 # Override covdefaults.

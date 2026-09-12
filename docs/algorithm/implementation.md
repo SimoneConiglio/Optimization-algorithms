@@ -16,7 +16,7 @@ into a `Benders` scenario, as shown in [Usage](usage.md).
 
 ## The subdivision
 
-{py:class}`~gemseo_algos_lab.algos.design_space.box_subdivision.BoxSubdivision`
+{py:class}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision`
 describes the Cartesian subdivision: per variable, the lower and upper bounds of
 each subdivision of each component, shaped `(size, n_subdivisions)`.
 
@@ -48,7 +48,7 @@ selects one box while the sub-problem enforces another, silently.
 
 ## Formulation 1: the box as a constraint
 
-{py:class}`~gemseo_algos_lab.disciplines.box_constraint.BoxConstraint` computes
+{py:class}`~gemseo_box_subdivision.disciplines.box_constraint.BoxConstraint` computes
 $g_{\text{box}}$ as a single vector-valued output of dimension $2n$, upper faces
 first, with an analytic Jacobian with respect to both $x$ and $\alpha$.
 
@@ -95,14 +95,14 @@ of the 100 boxes of the benchmark missed the global optimum**, returning $1.92$
 instead of $0$, because most sub-problems started outside their own box and the
 local solver stalled on a face.
 
-{py:func}`~gemseo_algos_lab.disciplines.scenario_adapters.box_start.create_box_start_adapter_class`
+{py:func}`~gemseo_box_subdivision.disciplines.scenario_adapters.box_start.create_box_start_adapter_class`
 returns a `Benders` scenario adapter that starts each sub-problem at the center
 of the selected box, which is feasible by construction and independent of the
 order of the boxes.
 
 ## Formulation 2: the box as normalized variables
 
-{py:class}`~gemseo_algos_lab.disciplines.box_mapping.BoxMapping` maps
+{py:class}`~gemseo_box_subdivision.disciplines.box_mapping.BoxMapping` maps
 $(\xi, \alpha)$ to $x$, again with an analytic Jacobian. Because the bounds of
 the sub-problem no longer depend on the box, this formulation needs **neither**
 the margin **nor** the scenario adapter: $\xi = 0.5$ is the center of whichever
@@ -116,11 +116,11 @@ $\xi$ while the disciplines keep receiving $x$.
 Both levels live in one `CatalogueDesignSpace`, which the `Benders` formulation
 splits on its own by keeping the categorical variables in the main problem:
 
-{py:func}`~gemseo_algos_lab.algos.design_space.box_design_space.create_box_design_space`
+{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_box_design_space`
 : the original variables with widened bounds, plus one categorical variable per
   subdivided variable. For the constraint formulation.
 
-{py:func}`~gemseo_algos_lab.algos.design_space.box_design_space.create_normalized_box_design_space`
+{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_normalized_box_design_space`
 : the normalized variables bounded by $0$ and $1$, plus the same categorical
   variables. For the normalized formulation.
 
@@ -131,7 +131,7 @@ containing the initial value of the design space.
 
 ## Enumerating the boxes
 
-{py:func}`~gemseo_algos_lab.algos.design_space.box_design_space.create_box_samples`
+{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_box_samples`
 returns the one-hot vector of every box. Passing them to the `CustomDOE` driver
 of the main problem solves the sub-problem of every box, which is the reference
 the method has to beat — and, being a driver of the same problem, makes the

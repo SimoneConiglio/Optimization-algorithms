@@ -27,11 +27,11 @@ from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approxima
     BiLevelMasterOuterApproximation_Settings,
 )
 
-from gemseo_algos_lab.algos.design_space.box_design_space import (
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
     create_normalized_box_design_space,
 )
-from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_algos_lab.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 
 design_space = DesignSpace()
 design_space.add_variable("x", lower_bound=-4.1, upper_bound=5.9, size=2, value=0.0)
@@ -60,9 +60,9 @@ solves for `x_normalized` while the objective keeps receiving `x`.
 ## Constraint formulation
 
 ```python
-from gemseo_algos_lab.algos.design_space.box_design_space import create_box_design_space
-from gemseo_algos_lab.disciplines.box_constraint import BoxConstraint
-from gemseo_algos_lab.disciplines.scenario_adapters.box_start import (
+from gemseo_box_subdivision.algos.design_space.box_design_space import create_box_design_space
+from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
+from gemseo_box_subdivision.disciplines.scenario_adapters.box_start import (
     create_box_start_adapter_class,
 )
 
@@ -100,7 +100,7 @@ against:
 ```python
 from gemseo.algos.doe.factory import DOELibraryFactory
 
-from gemseo_algos_lab.algos.design_space.box_design_space import create_box_samples
+from gemseo_box_subdivision.algos.design_space.box_design_space import create_box_samples
 
 DOELibraryFactory().execute(
     scenario.formulation.optimization_problem,
