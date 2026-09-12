@@ -237,6 +237,38 @@ class BoxSubdivision:
         """
         return sum(self.sizes[name] * n for name, n in self.n_subdivisions.items())
 
+    @property
+    def max_step(self) -> int:
+        r"""The largest trust-region step of the master, given the box weights.
+
+        The master restricts each of its iterations to a neighbourhood of the
+        incumbent box, of radius ``max_step`` in the distance induced by the
+        weights of the catalogue values. The design spaces built by this package
+        leave those weights at their default, which is the catalogue itself, so
+        the catalogue value of a subdivision being its index, the distance from
+        the incumbent $\alpha$ to a candidate is
+
+        $$
+        d(\alpha, \alpha') = \sum_{j \,:\, \alpha'_j \neq \alpha_j} k_j(\alpha),
+        $$
+
+        the sum of the **indexes the incumbent selects** over the components the
+        candidate changes: leaving the first subdivision of a component is free,
+        leaving the last one costs $m_j - 1$.
+
+        This property is the largest such distance, reached when the incumbent
+        selects the last subdivision of every component and the candidate changes
+        them all. Setting the master's ``max_step`` to it leaves the trust region
+        inactive at the first iteration, whichever box the run starts from, which
+        is what the outer approximation assumes; the master's own default of
+        $10$ is smaller than that as soon as the subdivision is not coarse, and
+        then confines a run started in a high-index box, up to making its master
+        infeasible once its neighbours are solved.
+        """
+        return sum(
+            self.sizes[name] * (n - 1) for name, n in self.n_subdivisions.items()
+        )
+
     def get_lower_bounds(self, name: str) -> ndarray:
         """Return the lower bounds of the subdivisions of a variable.
 

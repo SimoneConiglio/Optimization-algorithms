@@ -79,6 +79,11 @@ and this project adheres to
 - Benchmark comparing the outer approximation with that enumeration.
 - `benchmarks/configurations.py`, the two named configurations of the master,
   `adaptive`, the default, and `pure_convexification`.
+- `BoxSubdivision.max_step`, the largest trust-region step of the master in the
+  distance induced by the weights of the boxes, to be passed as its `max_step`
+  when a run stops early: the master's own default of ten is smaller than the
+  design space as soon as the subdivision is not coarse, and the run then ends
+  on an infeasible master instead of on its optimality test.
 - Benchmark comparing the method with the baselines of the problem class,
   multistart, CMA-ES and DIRECT, at equal budget of equivalent objective
   evaluations under both gradient-cost conventions.

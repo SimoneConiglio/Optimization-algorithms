@@ -79,6 +79,18 @@ def test_counts(design_space) -> None:
     assert subdivision.n_binaries == 2 * 2 + 1 * 4
 
 
+def test_max_step(design_space) -> None:
+    """Check the largest trust-region step, in the distance of the master.
+
+    The weights of the catalogue values being their indexes, the distance is the
+    sum, over the changed components, of the index the incumbent selects, so its
+    largest value is reached from the last subdivision of every component.
+    """
+    subdivision = BoxSubdivision.from_design_space(design_space, {"x": 2, "y": 4})
+    # x has 2 components with 2 subdivisions, y has 1 component with 4.
+    assert subdivision.max_step == 2 * (2 - 1) + 1 * (4 - 1)
+
+
 def test_single_subdivision(design_space) -> None:
     """Check that a single subdivision returns the original bounds."""
     subdivision = BoxSubdivision.from_design_space(design_space, 1)

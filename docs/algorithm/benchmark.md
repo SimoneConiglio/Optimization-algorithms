@@ -154,6 +154,103 @@ step towards `max_step` and retrying before giving up on an infeasible master,
 and reporting the bound net of the convexification term, which vanishes at the
 integer points and so leaves the gap meaningful.
 
+## The trust region is a compromise, and its default is not the design space
+
+The master does not consider every box at each iteration: it restricts the MILP
+to a neighbourhood of the incumbent, whose radius `max_step` shrinks when the
+upper bound stops improving. Without that restriction the master is the textbook
+outer approximation, which explores until its lower bound rises above the
+incumbent; with it, the run is cheaper and stops earlier. Which is the better
+trade depends on the problem, so the radius is worth setting deliberately.
+
+Two things make the default wrong for a box subdivision.
+
+**The distance is not the number of boxes apart.** The trust region is the linear
+constraint
+
+$$
+\sum_{j \,:\, \alpha'_j = \alpha_j} w_j(\alpha) \ \ge\ \sum_j w_j(\alpha) - \texttt{max\_step},
+$$
+
+so the cost of moving from the incumbent $\alpha$ to a candidate $\alpha'$ is the
+sum of the **weights the incumbent selects** over the components the candidate
+changes. The design spaces built here leave the catalogue weights at their
+default, which `CatalogueDesignSpace` sets to the catalogue itself, and the
+catalogue of a subdivided variable is the range of its subdivision indexes:
+
+```text
+x_box weights = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+Leaving the first subdivision of a component is therefore free and leaving the
+last one costs $m_j - 1$, whatever the candidate. The distance is neither the
+number of components changed nor how far they move.
+
+**The default radius is smaller than the design space.** The largest distance is
+$\sum_j (m_j - 1)$, which is $18$ for the two variables and ten subdivisions of
+this benchmark, against the master's default `max_step` of $10$. The trust region
+is then active from the first iteration, and once it shrinks, an incumbent whose
+indexes are high cannot change any component at all: the master can only
+re-propose the incumbent, which has been eliminated, so the MILP becomes
+infeasible and the run stops. Instrumenting the last iteration of a run stopping
+at $14$ boxes shows exactly that: dropping either the elimination constraints or
+the trust region alone restores feasibility, neither alone is the cause.
+
+{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
+returns that largest distance, to be passed to the master.
+
+Sweeping the constant of the pure convexification at both radii, over eight
+starting points:
+
+| `max_step` | $\kappa = 0$ | $10$ | $100$ | $1000$ | $10^4$ | $10^5$ |
+|------------|--------------|------|-------|--------|--------|--------|
+| $10$, the master default | 0/8 | 0/8 | 6/8 | — | 4/8 | 3/8 |
+| $18$, the design space | 0/8 | 0/8 | **8/8** | 7/8 | 4/8 | 4/8 |
+
+At its best constant, the pure convexification reaches the optimum from every
+starting point once the trust region is sized to the design space. Per starting
+point, the two runs that fail at $10$ both succeed at $18$, and every run solves
+a few more boxes:
+
+```text
+start box      max_step 10          max_step 18
+   [1, 4]   0.9950 (14 boxes)   0.0000 (20 boxes)
+   [3, 5]   0.9950 (16 boxes)   0.0000 (20 boxes)
+```
+
+For the adaptive repair, which already reaches 8/8, the larger radius only costs:
+$47$ boxes and $606$ evaluations instead of $24$ and $308$, for the same optimum.
+So the radius buys exploration and is paid for in evaluations, which is what a
+trust region is for; the default configuration keeps the master's own value, and
+a problem on which the run stops early is a reason to raise it to
+`subdivision.max_step`.
+
+### What actually stops a run without the trust region
+
+Deactivating the shrink, by setting `step_decreasing_activation` above the number
+of iterations, does not restore the textbook behaviour either, and raising
+$\kappa$ still buys nothing: 6/8 at $\kappa = 100$ and 3/8 at $10^5$, with the
+same numbers under the index weights and under unit weights, which is the
+signature of a trust region that is inactive in both. The cap has simply moved:
+
+```text
+MILP : Stalling iterations: 10/10.
+The Upper bound stopped changing for 10 iterations.
+```
+
+`upper_bound_stall` defaults to $10$: the master gives up after ten iterations
+that do not improve the incumbent, whatever its lower bound says. With one box
+solved per iteration, that alone caps a run near twenty boxes out of a hundred.
+
+Together with the lower bound degraded by $\kappa$, this is the whole explanation
+of why raising the constant stops buying exploration: the run can only end on the
+stall counter or on an infeasible master, never on the optimality test, so the
+convergence guarantee of the convexification is unreachable from any value of the
+constant. Recovering it needs the three settings raised together, `max_step` to
+the size of the design space, `step_decreasing_activation` and `upper_bound_stall`
+above the iteration count, and the price is the number of sub-problems the outer
+approximation was introduced to save.
+
 ## Comparison with the baselines of the problem class
 
 Enumerating the boxes measures the exploration, but it is not what a practitioner
