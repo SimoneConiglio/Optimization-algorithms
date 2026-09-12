@@ -36,7 +36,9 @@ from __future__ import annotations
 import logging
 from contextlib import suppress
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING
+from typing import Any
 
 from gemseo import create_scenario
 from gemseo.algos.design_space import DesignSpace
@@ -64,6 +66,8 @@ from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivi
 from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from numpy import ndarray
 
     from benchmarks.problems import Problem
@@ -224,6 +228,7 @@ def run_box_subdivision(
     adjoint: bool,
     n_subdivisions: int = 0,
     configuration: str = DEFAULT_CONFIGURATION,
+    overrides: Mapping[str, Any] = MappingProxyType({}),
 ) -> Result:
     """Run the box-subdivision outer approximation.
 
@@ -238,6 +243,8 @@ def run_box_subdivision(
         configuration: The configuration of the master, either
             ``"adaptive"`` or ``"pure_convexification"``. The two are
             different mechanisms and are not combined.
+        overrides: The settings of the master to override, to sweep one of them
+            without defining a configuration of its own.
 
     The trust region of the master is sized to the design space, with
     :attr:`.BoxSubdivision.max_step`, for the configurations listed in
@@ -266,6 +273,8 @@ def run_box_subdivision(
     settings = dict(CONFIGURATIONS[configuration])
     if configuration in SIZED_TRUST_REGION:
         settings["max_step"] = subdivision.max_step
+
+    settings.update(overrides)
 
     with suppress(BudgetExceededError):
         scenario.execute(
