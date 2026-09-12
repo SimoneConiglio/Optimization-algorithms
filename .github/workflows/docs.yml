@@ -17,6 +17,11 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required by configure-pages to switch the source to GitHub Actions.
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +32,14 @@ jobs:
           python-version: "3.13"
       - name: Install tox
         run: python -m pip install --upgrade pip tox tox-uv
+      - name: Configure GitHub Pages
+        # enablement switches the source of the pages to GitHub Actions, so that
+        # the built documentation is published instead of the repository being
+        # processed by Jekyll.
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+        continue-on-error: true
       - name: Build the documentation
         run: tox -e doc
         env:
