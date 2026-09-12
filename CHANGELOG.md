@@ -33,3 +33,6 @@ and this project adheres to
 - Initial packaging of the project as a GEMSEO plugin, generated from the
   [GEMSEO copier template](https://gitlab.com/gemseo/dev/copier-gemseo).
 - Dependency on `gemseo-bilevel-outer-approximation`.
+- `benchmark` dependency group with `gemseo-benchmark`, and the matching
+  `tox -e benchmark` environment.
+- Design note for the box-subdivision outer approximation algorithm.

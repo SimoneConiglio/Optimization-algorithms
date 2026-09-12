@@ -27,6 +27,11 @@ dependencies = [
 ]
 
 [dependency-groups]
+# The benchmarking harness is only needed to run the algorithm comparisons,
+# not to use the algorithms, hence a dedicated group.
+benchmark = [
+    "gemseo-benchmark >=4,<5",
+]
 dev = [
     "covdefaults >=2",
     "pytest >=7,<9",
