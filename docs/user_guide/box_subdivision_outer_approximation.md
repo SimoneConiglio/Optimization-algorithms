@@ -243,7 +243,8 @@ face, where $\xi_j$ is pinned so the partial derivative is the total one.
 
 The counterpart is that $x$ is **bilinear** in $(\xi,\alpha)$: the choice of the
 box enters the non-linearity of the objective instead of staying in a jointly
-convex constraint. The benchmark shows this is not a theoretical concern.
+convex constraint. This does not make it explore worse, but it does mean it
+needs a larger convexification constant, see below.
 
 ## The sub-problem needs a starting point inside its box
 
@@ -287,34 +288,59 @@ into $10 \times 10 = 100$ boxes, from three random starting points
 | formulation | method | objective | boxes solved | discipline executions |
 |-------------|--------|-----------|--------------|-----------------------|
 | constraint | enumeration | $0.0$ | 100 | 1427 |
-| constraint | outer approximation | $0.0$ | 20 to 21 | 288 to 299 |
+| constraint | outer approximation | $0.0$ | 18 to 22 | 253 to 316 |
 | normalized | enumeration | $0.0$ | 100 | 1267 |
-| normalized | outer approximation | $0.0$ to $3.98$ | 14 to 17 | 184 to 217 |
+| normalized | outer approximation | $0.0$ | 15 to 22 | 195 to 281 |
 
-about **five times cheaper for the same optimum**, and the two formulations
-split the difference:
+about **five times cheaper for the same optimum**, with each formulation using
+its own tuned convexification.
 
-- the **normalized** formulation solves its boxes for less, about 11% fewer
-  executions when enumerating, since its sub-problems are bounded by their box
-  and start inside it instead of having to restore the feasibility of a
-  constraint;
-- the **constraint** formulation explores better, reaching the global optimum
-  where the normalized one stops early. Its cuts are built on a jointly convex
-  constraint, whereas the bilinearity of $x(\xi,\alpha)$ weakens them. This is
-  the measured cost of the bilinearity.
+## The convexification has to be tuned per formulation
 
-Two caveats, both measured:
+The convexification constant is not a detail and it is not transferable from one
+formulation to the other. Sweeping it over 16 starting points
+(`benchmarks/tune_convexification.py`), counting how often the global optimum is
+reached:
 
-- The result depends entirely on the convexification. With the default
-  `convexification_constant` of $0$, the cuts are invalid on a non-convex
-  problem and the master converges after **two** sub-problems, on $f = 17.9$.
-  The table above uses a constant of $10$ with `adapt=True`; a constant of $100$
-  without adaptation reaches $0.995$.
-- The method is not exhaustive. With the constraint formulation, over six
-  starting points, it reached the exact global optimum on four and stopped at
-  $0.995$, the neighbouring local minimum, on the other two. Enumeration is
-  exhaustive over the boxes and always returns $0$. The trade is five times
-  fewer executions against that guarantee.
+| formulation | constant | adapt | reached | median executions |
+|-------------|----------|-------|---------|-------------------|
+| constraint | $0$ to $5$ | yes | 0 / 16 | 30 to 90 |
+| constraint | $10$ | yes | 8 / 16 | 234 |
+| constraint | $50$ | yes | 9 / 16 | 254 |
+| constraint | $500$ | yes | 9 / 16 | 280 |
+| normalized | $10$ | yes | 6 / 16 | 188 |
+| normalized | $50$ | yes | 15 / 16 | 230 |
+| normalized | **$100$** | yes | **16 / 16** | 235 |
+| normalized | $200$ | yes | 12 / 16 | 221 |
+
+Two things follow.
+
+First, **too small a constant is a silent failure**: below $10$ the master
+converges after two or three sub-problems on a point an order of magnitude away
+from the optimum, and reports success. Too large a one loosens the relaxation
+and the exploration degrades again, so there is a genuine optimum to find.
+
+Second, **the normalized formulation explores better once tuned**. Its
+bilinearity adds curvature with respect to the box selection, so it needs a
+constant about ten times larger than the constraint formulation; given it, it
+reaches the global optimum from 96% of the starting points over three
+independent seeds of 16 points, against 58% for the best setting of the
+constraint formulation, at the same cost of about 230 executions. The constraint
+formulation never exceeded 9 / 16 anywhere in the range $10$ to $500$, with or
+without adaptation.
+
+The adaptive convexification matters too: for the normalized formulation, the
+best setting without it reaches 12 / 16 instead of 16 / 16.
+
+An earlier version of this note reported the opposite conclusion, that the
+constraint formulation explored better. That measurement used a single constant
+of $10$ for both, which happens to suit the constraint formulation and to be far
+too small for the normalized one.
+
+The remaining caveat is that the method is **not exhaustive**. Enumeration is
+exhaustive over the boxes and always returns $0$; the outer approximation
+reaches it from 96% of the starting points with the tuned normalized
+formulation. The trade is five times fewer executions against that guarantee.
 
 The Moré–Wild data profiles of `gemseo-benchmark` are the next step: both
 methods are now drivers of the same problem, which is what its

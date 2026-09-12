@@ -54,3 +54,5 @@ and this project adheres to
 - `BoxMapping` and `create_normalized_box_design_space`, an alternative
   formulation solving the sub-problem in the normalized variables of the box.
 - `BoxSubdivision.compute_bounds` and `BoxSubdivision.get_normalized_names`.
+- `benchmarks/tune_convexification.py`, sweeping the convexification of both
+  formulations, and the convexification tuned for each of them.
