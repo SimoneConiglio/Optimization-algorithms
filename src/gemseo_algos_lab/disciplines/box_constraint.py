@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from gemseo.typing import StrKeyMapping
-    from numpy import ndarray
 
     from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
 
@@ -140,35 +139,12 @@ class BoxConstraint(Discipline):
         """The name of the constraint."""
         return self.__output_name
 
-    def __compute_bounds(
-        self, variable_name: str, one_hot: ndarray
-    ) -> tuple[ndarray, ndarray]:
-        """Compute the bounds of the box selected by a one-hot vector.
-
-        Args:
-            variable_name: The name of the design variable.
-            one_hot: The flat one-hot vector selecting a subdivision per component.
-
-        Returns:
-            The lower and upper bounds of the selected box.
-        """
-        subdivision = self.__subdivision
-        shape = (
-            subdivision.sizes[variable_name],
-            subdivision.n_subdivisions[variable_name],
-        )
-        weights = one_hot.reshape(shape)
-        return (
-            (subdivision.get_lower_bounds(variable_name) * weights).sum(axis=1),
-            (subdivision.get_upper_bounds(variable_name) * weights).sum(axis=1),
-        )
-
     def _run(self, input_data: StrKeyMapping) -> StrKeyMapping:
         upper_violations = []
         lower_violations = []
         for variable_name in self.__subdivision.variable_names:
             value = input_data[variable_name]
-            lower_bound, upper_bound = self.__compute_bounds(
+            lower_bound, upper_bound = self.__subdivision.compute_bounds(
                 variable_name, input_data[self.__one_hot_names[variable_name]]
             )
             upper_violations.append(value - upper_bound)

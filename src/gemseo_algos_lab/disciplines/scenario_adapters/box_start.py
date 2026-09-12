@@ -75,17 +75,9 @@ def create_box_start_adapter_class(
                 if variable_name not in design_space or one_hot_name not in data:
                     continue
 
-                shape = (
-                    subdivision.sizes[variable_name],
-                    subdivision.n_subdivisions[variable_name],
+                lower_bound, upper_bound = subdivision.compute_bounds(
+                    variable_name, data[one_hot_name]
                 )
-                weights = data[one_hot_name].reshape(shape)
-                lower_bound = (
-                    subdivision.get_lower_bounds(variable_name) * weights
-                ).sum(axis=1)
-                upper_bound = (
-                    subdivision.get_upper_bounds(variable_name) * weights
-                ).sum(axis=1)
                 current_value[variable_name] = (lower_bound + upper_bound) / 2.0
 
             if current_value:

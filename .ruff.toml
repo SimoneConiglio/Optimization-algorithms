@@ -141,6 +141,8 @@ convention = "google"
 
 [lint.per-file-ignores]
 "*.ipynb" = ["unnecessary-assign"]
+# The benchmarks report their measurements on the standard output.
+"benchmarks/**/*.py" = ["T"]
 "tests/*.py" = ["D", "pytest-unittest-assertion", "pytest-raises-too-broad", "pytest-unittest-raises-assertion", "PTH"]
 "docs/*.py" = [
   "T",

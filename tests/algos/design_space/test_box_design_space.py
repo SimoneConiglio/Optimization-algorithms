@@ -26,6 +26,9 @@ from numpy.testing import assert_allclose
 
 from gemseo_algos_lab.algos.design_space.box_design_space import create_box_design_space
 from gemseo_algos_lab.algos.design_space.box_design_space import create_box_samples
+from gemseo_algos_lab.algos.design_space.box_design_space import (
+    create_normalized_box_design_space,
+)
 from gemseo_algos_lab.algos.design_space.box_subdivision import BoxSubdivision
 from gemseo_algos_lab.disciplines.box_constraint import BoxConstraint
 
@@ -185,3 +188,75 @@ def test_too_many_boxes(subdivision) -> None:
     """Check the error raised when the boxes cannot be enumerated."""
     with pytest.raises(ValueError, match=r"more than the maximum of 4"):
         create_box_samples(subdivision, max_boxes=4)
+
+
+@pytest.fixture
+def normalized_design_space(subdivision, design_space):
+    """The design space of the box-subdivided problem in normalized variables."""
+    return create_normalized_box_design_space(subdivision, design_space)
+
+
+def test_normalized_variables(normalized_design_space) -> None:
+    """Check that the subdivided variables are replaced by normalized ones."""
+    assert set(normalized_design_space.variable_names) == {
+        "z",
+        "x_normalized",
+        "y_normalized",
+        "x_box",
+        "y_box",
+    }
+    assert normalized_design_space.categorical_variables == ["x_box", "y_box"]
+
+
+def test_normalized_bounds_do_not_depend_on_the_box(normalized_design_space) -> None:
+    """Check that the normalized variables are bounded by 0 and 1.
+
+    These bounds are the same for every box, which is what the Benders
+    formulation of GEMSEO requires, and what makes the margin and the box
+    constraint unnecessary.
+    """
+    assert_allclose(normalized_design_space.get_lower_bounds(["x_normalized"]), [0, 0])
+    assert_allclose(normalized_design_space.get_upper_bounds(["x_normalized"]), [1, 1])
+
+
+def test_normalized_starts_at_the_box_center(normalized_design_space) -> None:
+    """Check that the sub-problem starts at the center of whichever box."""
+    assert_allclose(
+        normalized_design_space.get_current_value(["x_normalized"]), [0.5, 0.5]
+    )
+
+
+def test_normalized_keeps_other_variables(normalized_design_space) -> None:
+    """Check that a variable that is not subdivided is kept as is."""
+    assert_allclose(normalized_design_space.get_lower_bounds(["z"]), [0.0])
+    assert_allclose(normalized_design_space.get_upper_bounds(["z"]), [1.0])
+
+
+def test_normalized_initial_box(normalized_design_space) -> None:
+    """Check that the initial box is the one containing the initial value."""
+    assert_allclose(
+        normalized_design_space.get_current_value(["x_box"]),
+        [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    )
+
+
+def test_normalized_without_other_variables(design_space) -> None:
+    """Check the design space when every variable is subdivided."""
+    subdivision = BoxSubdivision.from_design_space(design_space, 2)
+    normalized = create_normalized_box_design_space(subdivision, design_space)
+    assert set(normalized.variable_names) == {
+        "x_normalized",
+        "y_normalized",
+        "z_normalized",
+        "x_box",
+        "y_box",
+        "z_box",
+    }
+
+
+def test_normalized_unknown_variable(subdivision) -> None:
+    """Check the error raised when a subdivided variable is unknown."""
+    other_design_space = DesignSpace()
+    other_design_space.add_variable("w", lower_bound=0.0, upper_bound=1.0, value=0.5)
+    with pytest.raises(ValueError, match=r"not in the design space: \['x', 'y'\]"):
+        create_normalized_box_design_space(subdivision, other_design_space)

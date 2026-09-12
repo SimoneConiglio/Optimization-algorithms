@@ -204,6 +204,47 @@ The method is then benchmarked against the enumeration of the boxes, see
 3. **Choice of $m_i$.** No obvious a priori rule; it should probably be driven
    by a curvature estimate, which is already needed for the convexification.
 
+## Two ways of confining the sub-problem to its box
+
+The package implements both, and the benchmark below compares them.
+
+**As a constraint** (`BoxConstraint`), described above: the sub-problem keeps
+the design variables, and the box is the vector-valued constraint
+$g(x,\alpha)\le0$. The constraint is linear in $x$ and affine in $\alpha$, so it
+is jointly convex and the whole non-convexity stays in the original functions.
+It needs the bound margin, and a scenario adapter to start inside the box.
+
+**As normalized variables** (`BoxMapping`): the sub-problem solves for
+$\xi\in[0,1]^n$, with
+
+$$
+x(\xi, \alpha) = \ell(\alpha) + \xi \odot (u(\alpha) - \ell(\alpha)).
+$$
+
+The box is then the *bounds* of the sub-problem, and those bounds are the unit
+interval whatever the box. Three of the difficulties above simply disappear:
+$\xi = 0.5$ is the center of whichever box, so no adapter is needed; the bounds
+genuinely do not depend on $\alpha$, so the assumption of the post-optimal
+analysis holds instead of being worked around, and no margin is needed; and the
+limitation of the `Benders` formulation is not one, since an $\alpha$-dependent
+design space is no longer wanted. The sensitivity comes from the partial
+derivative rather than from multipliers,
+
+$$
+\frac{\mathrm{d}u}{\mathrm{d}\alpha_{j,k}}
+= \nabla_x f \cdot \frac{\partial x}{\partial \alpha_{j,k}},
+\qquad
+\frac{\partial x_j}{\partial \alpha_{j,k}}
+= (1-\xi_j)\, l_{j,k} + \xi_j\, u_{j,k},
+$$
+
+which is correct at an interior optimum, where $\nabla_x f$ vanishes, and on a
+face, where $\xi_j$ is pinned so the partial derivative is the total one.
+
+The counterpart is that $x$ is **bilinear** in $(\xi,\alpha)$: the choice of the
+box enters the non-linearity of the objective instead of staying in a jointly
+convex constraint. The benchmark shows this is not a theoretical concern.
+
 ## The sub-problem needs a starting point inside its box
 
 The sub-problem of a box is solved by a local algorithm, so its starting point
@@ -243,12 +284,24 @@ On the Rastrigin function in two dimensions over $[-4.1, 5.9]^2$, subdivided
 into $10 \times 10 = 100$ boxes, from three random starting points
 (`benchmarks/`):
 
-| method | objective | boxes solved | discipline executions |
-|--------|-----------|--------------|-----------------------|
-| enumeration | $0.0$ | 100 | 1427 |
-| outer approximation | $0.0$ | 20 to 21 | 288 to 299 |
+| formulation | method | objective | boxes solved | discipline executions |
+|-------------|--------|-----------|--------------|-----------------------|
+| constraint | enumeration | $0.0$ | 100 | 1427 |
+| constraint | outer approximation | $0.0$ | 20 to 21 | 288 to 299 |
+| normalized | enumeration | $0.0$ | 100 | 1267 |
+| normalized | outer approximation | $0.0$ to $3.98$ | 14 to 17 | 184 to 217 |
 
-about **five times cheaper for the same optimum**.
+about **five times cheaper for the same optimum**, and the two formulations
+split the difference:
+
+- the **normalized** formulation solves its boxes for less, about 11% fewer
+  executions when enumerating, since its sub-problems are bounded by their box
+  and start inside it instead of having to restore the feasibility of a
+  constraint;
+- the **constraint** formulation explores better, reaching the global optimum
+  where the normalized one stops early. Its cuts are built on a jointly convex
+  constraint, whereas the bilinearity of $x(\xi,\alpha)$ weakens them. This is
+  the measured cost of the bilinearity.
 
 Two caveats, both measured:
 
@@ -257,10 +310,11 @@ Two caveats, both measured:
   problem and the master converges after **two** sub-problems, on $f = 17.9$.
   The table above uses a constant of $10$ with `adapt=True`; a constant of $100$
   without adaptation reaches $0.995$.
-- The method is not exhaustive. Over six starting points, it reached the exact
-  global optimum on four, and stopped at $0.995$, the neighbouring local
-  minimum, on the other two. Enumeration is exhaustive over the boxes and always
-  returns $0$. The trade is five times fewer executions against that guarantee.
+- The method is not exhaustive. With the constraint formulation, over six
+  starting points, it reached the exact global optimum on four and stopped at
+  $0.995$, the neighbouring local minimum, on the other two. Enumeration is
+  exhaustive over the boxes and always returns $0$. The trade is five times
+  fewer executions against that guarantee.
 
 The Moré–Wild data profiles of `gemseo-benchmark` are the next step: both
 methods are now drivers of the same problem, which is what its

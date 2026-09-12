@@ -61,6 +61,9 @@ class BoxSubdivision:
     ONE_HOT_SUFFIX: Final[str] = "_box"
     """The default suffix of the one-hot variable selecting a subdivision."""
 
+    NORMALIZED_SUFFIX: Final[str] = "_normalized"
+    """The default suffix of the normalized variable of a box."""
+
     __lower_bounds: dict[str, ndarray]
     """The lower bounds of the subdivisions, shaped ``(size, n_subdivisions)``."""
 
@@ -336,3 +339,35 @@ class BoxSubdivision:
             for component, component_value in enumerate(atleast_1d(value))
         ]
         return clip(array(indexes), 0, n_subdivisions - 1)
+
+    def get_normalized_names(
+        self, overrides: Mapping[str, str] = MappingProxyType({})
+    ) -> dict[str, str]:
+        """Return the name of the normalized variable of each subdivided variable.
+
+        Args:
+            overrides: The names to use instead of the default ones.
+
+        Returns:
+            The name of the normalized variable of each subdivided variable.
+        """
+        return {
+            name: overrides.get(name, f"{name}{self.NORMALIZED_SUFFIX}")
+            for name in self.variable_names
+        }
+
+    def compute_bounds(self, name: str, one_hot: ndarray) -> tuple[ndarray, ndarray]:
+        """Compute the bounds of the box selected by a one-hot vector.
+
+        Args:
+            name: The name of the variable.
+            one_hot: The flat one-hot vector selecting a subdivision per component.
+
+        Returns:
+            The lower and upper bounds of the selected box.
+        """
+        weights = one_hot.reshape(self.sizes[name], self.n_subdivisions[name])
+        return (
+            (self.__lower_bounds[name] * weights).sum(axis=1),
+            (self.__upper_bounds[name] * weights).sum(axis=1),
+        )

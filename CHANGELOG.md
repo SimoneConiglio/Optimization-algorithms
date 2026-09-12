@@ -28,6 +28,11 @@ and this project adheres to
 
 ## Unreleased
 
+### Fixed
+
+- The benchmarks no longer have their report stripped by the `T20` rule of
+  ruff, whose unsafe fixes silently replaced the `print` calls by `pass`.
+
 ### Added
 
 - Initial packaging of the project as a GEMSEO plugin, generated from the
@@ -46,3 +51,6 @@ and this project adheres to
 - `create_box_samples`, the one-hot vectors of every box, to solve them all
   with the `CustomDOE` driver.
 - Benchmark comparing the outer approximation with that enumeration.
+- `BoxMapping` and `create_normalized_box_design_space`, an alternative
+  formulation solving the sub-problem in the normalized variables of the box.
+- `BoxSubdivision.compute_bounds` and `BoxSubdivision.get_normalized_names`.
