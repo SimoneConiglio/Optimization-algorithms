@@ -169,6 +169,29 @@ original bounds, up to the constraint tolerance.
 This matters for every variable, since the first and the last subdivision of
 each variable always touch a bound.
 
+## Status
+
+The pieces are assembled and run end to end on a multimodal one-dimensional
+problem, $f(x) = \sin(6x) + 0.3 (x - 0.4)^2$ on $[0, 1]$, subdivided into four
+boxes:
+
+- `BoxSubdivision` describes the subdivision and locates a value in it;
+- `create_box_design_space` gathers the relaxed original variables and one
+  categorical variable per subdivided variable, which the `Benders` formulation
+  splits into the two levels on its own;
+- `BoxConstraint` enforces the selected box in the sub-problem.
+
+Started from $x = 0.1$, inside the basin of a local minimum that a local solver
+alone does not escape, the bi-level outer approximation reaches the global
+optimum $f = -0.9562$ at $x = 0.7791$ in **two master iterations for four
+boxes**, and does so from every starting box. Solving fewer sub-problems than
+there are boxes is the property the method has to exhibit; it is pinned by
+`tests/test_box_subdivision_outer_approximation.py`.
+
+Note that the master already exposes `number_of_parallel_points` and
+`number_of_processes` settings, so part of the multi-cut parallelism described
+below may not need to be written from scratch.
+
 ## Open questions
 
 1. **Static vs. adaptive subdivision.** A fixed subdivision is either too coarse

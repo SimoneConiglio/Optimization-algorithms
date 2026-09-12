@@ -17,13 +17,17 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Final
 
+from numpy import array
 from numpy import atleast_1d
+from numpy import clip
 from numpy import isfinite
 from numpy import linspace
 from numpy import ndarray
+from numpy import searchsorted
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -53,6 +57,9 @@ class BoxSubdivision:
 
     DEFAULT_BOUND_MARGIN: Final[float] = 1e-4
     """The default relative margin of :meth:`.create_relaxed_design_space`."""
+
+    ONE_HOT_SUFFIX: Final[str] = "_box"
+    """The default suffix of the one-hot variable selecting a subdivision."""
 
     __lower_bounds: dict[str, ndarray]
     """The lower bounds of the subdivisions, shaped ``(size, n_subdivisions)``."""
@@ -291,3 +298,41 @@ class BoxSubdivision:
             relaxed_design_space.set_upper_bound(name, upper_bound + offset)
 
         return relaxed_design_space
+
+    def get_one_hot_names(
+        self, overrides: Mapping[str, str] = MappingProxyType({})
+    ) -> dict[str, str]:
+        """Return the name of the one-hot variable of each subdivided variable.
+
+        Args:
+            overrides: The names to use instead of the default ones.
+
+        Returns:
+            The name of the one-hot variable of each subdivided variable.
+        """
+        return {
+            name: overrides.get(name, f"{name}{self.ONE_HOT_SUFFIX}")
+            for name in self.variable_names
+        }
+
+    def locate(self, name: str, value: ndarray) -> ndarray:
+        """Return the index of the subdivision containing each component of a value.
+
+        A value lying on the border between two subdivisions is assigned to the
+        first of them, and a value outside the original bounds is assigned to the
+        closest subdivision.
+
+        Args:
+            name: The name of the variable.
+            value: The value of the variable.
+
+        Returns:
+            The index of the subdivision of each component.
+        """
+        upper_bounds = self.__upper_bounds[name]
+        n_subdivisions = upper_bounds.shape[1]
+        indexes = [
+            searchsorted(upper_bounds[component], component_value)
+            for component, component_value in enumerate(atleast_1d(value))
+        ]
+        return clip(array(indexes), 0, n_subdivisions - 1)

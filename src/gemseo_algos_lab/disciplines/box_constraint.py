@@ -63,9 +63,6 @@ class BoxConstraint(Discipline):
     non-convexity of the problem remains in its original functions.
     """
 
-    ONE_HOT_SUFFIX: Final[str] = "_box"
-    """The suffix of the one-hot variable selecting the subdivision."""
-
     DEFAULT_OUTPUT_NAME: Final[str] = "g_box"
     """The default name of the constraint."""
 
@@ -100,18 +97,13 @@ class BoxConstraint(Discipline):
             subdivision: The Cartesian subdivision of the design space.
             one_hot_names: The name of the one-hot variable of each design
                 variable. If empty, suffix the design variable names with
-                :attr:`.ONE_HOT_SUFFIX`.
+                :attr:`.BoxSubdivision.ONE_HOT_SUFFIX`.
             output_name: The name of the constraint.
         """  # noqa: D205, D212
         super().__init__(name=name)
         self.__subdivision = subdivision
         self.__output_name = output_name
-        self.__one_hot_names = {
-            variable_name: one_hot_names.get(
-                variable_name, f"{variable_name}{self.ONE_HOT_SUFFIX}"
-            )
-            for variable_name in subdivision.variable_names
-        }
+        self.__one_hot_names = subdivision.get_one_hot_names(one_hot_names)
 
         sizes = subdivision.sizes
         n_subdivisions = subdivision.n_subdivisions

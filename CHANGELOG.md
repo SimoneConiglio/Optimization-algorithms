@@ -39,3 +39,5 @@ and this project adheres to
 - `BoxSubdivision`, a Cartesian subdivision of a design space.
 - `BoxConstraint`, the discipline expressing the selected box as a
   vector-valued constraint, with its analytic Jacobian.
+- `create_box_design_space`, building the design space of both levels.
+- `BoxSubdivision.locate` and `BoxSubdivision.get_one_hot_names`.

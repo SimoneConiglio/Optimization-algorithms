@@ -143,3 +143,39 @@ def test_empty_subdivision() -> None:
     """Check the error raised when a subdivision is empty."""
     with pytest.raises(ValueError, match=r"strictly smaller"):
         BoxSubdivision({"x": array([[1.0]])}, {"x": array([[1.0]])})
+
+
+def test_one_hot_names(design_space) -> None:
+    """Check the default and overridden names of the one-hot variables."""
+    subdivision = BoxSubdivision.from_design_space(design_space, 2)
+    assert subdivision.get_one_hot_names() == {"x": "x_box", "y": "y_box"}
+    assert subdivision.get_one_hot_names({"x": "alpha"}) == {
+        "x": "alpha",
+        "y": "y_box",
+    }
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ([0.1, 0.9], [0, 3]),
+        # A value on a border belongs to the first of the two subdivisions.
+        ([0.25, 0.75], [0, 2]),
+        # A value outside the bounds is assigned to the closest subdivision.
+        ([-5.0, 5.0], [0, 3]),
+        ([0.0, 1.0], [0, 3]),
+    ],
+)
+def test_locate(design_space, value, expected) -> None:
+    """Check the subdivision containing a value."""
+    subdivision = BoxSubdivision.from_design_space(design_space, 4)
+    assert list(subdivision.locate("x", array(value))) == expected
+
+
+def test_relaxed_design_space_keeps_other_variables(design_space) -> None:
+    """Check that a variable that is not subdivided keeps its bounds."""
+    subdivision = BoxSubdivision.from_design_space(design_space, 2, ["y"])
+    relaxed = subdivision.create_relaxed_design_space(design_space)
+    assert_allclose(relaxed.get_lower_bounds(["x"]), [0.0, 0.0])
+    assert_allclose(relaxed.get_upper_bounds(["x"]), [1.0, 1.0])
+    assert relaxed.get_lower_bounds(["y"])[0] < -2.0
