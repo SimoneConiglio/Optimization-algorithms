@@ -105,6 +105,9 @@ CASES = (
         "2 then 5, refine 4, mixed",
         {"coarse": 2, "fine": 5, "n_refined": 4, "ranking": "mixed"},
     ),
+    ("deep, 4 levels of 2, value", {"deep": True, "depth": 4}),
+    ("deep, 4 levels of 2, cuts", {"deep": True, "depth": 4, "ranking": "cuts"}),
+    ("deep, 6 levels of 2, value", {"deep": True, "depth": 6}),
 )
 """The hierarchies to compare, against the flat subdivisions."""
 
@@ -383,6 +386,64 @@ def run_hierarchical(
     return shared.best, shared.cost(dimension, adjoint=True)
 
 
+def run_deep(
+    problem: Problem,
+    dimension: int,
+    seed: int,
+    budget: int,
+    branching: int = 2,
+    depth: int = 4,
+    ranking: str = "value",
+) -> tuple[float, int]:
+    r"""Refine the same box again and again, splitting each variable in two.
+
+    The two-level hierarchy gains nothing in the statistics of its cut model: its
+    fine level still carries as many coefficients, $n \times m$, as cuts it can
+    afford. A **deep and narrow** hierarchy keeps every level small, splitting
+    each variable in two, so each level has $2n$ coefficients against the score
+    of boxes it can afford, and the resolution reached is $2^{\text{depth}}$ per
+    variable.
+
+    Args:
+        problem: The problem.
+        dimension: The number of design variables.
+        seed: The seed of the starting point.
+        budget: The budget in equivalent objective evaluations.
+        branching: The number of subdivisions per variable at every level.
+        depth: The number of levels.
+        ranking: The rule deciding which box to refine.
+
+    Returns:
+        The best objective value and the cost under the adjoint convention.
+    """
+    shared = BudgetedCounter(problem, dimension, budget, adjoint=True)
+    lower = full(dimension, problem.lower_bound)
+    upper = full(dimension, problem.upper_bound)
+    value = default_rng(seed).uniform(
+        problem.lower_bound, problem.upper_bound, dimension
+    )
+    allowance = max(1, budget // depth)
+    for _ in range(depth):
+        subdivision = None
+        solved: list[tuple[ndarray, float, ndarray]] = []
+        with suppress(BudgetExceededError, KeyError):
+            subdivision, solved = _solve_level(
+                Level(shared, dimension, allowance),
+                _design_space(lower, upper, dimension, value),
+                dimension,
+                branching,
+            )
+
+        if not solved:
+            break
+
+        one_hot = RANKINGS[ranking](solved, subdivision)[0]
+        lower, upper = subdivision.compute_bounds("x", one_hot)
+        value = 0.5 * (lower + upper)
+
+    return shared.best, shared.cost(dimension, adjoint=True)
+
+
 def main() -> None:
     """Compare the hierarchies with the flat subdivisions they are made of."""
     logging.disable(logging.CRITICAL)
@@ -416,9 +477,9 @@ def main() -> None:
             )
 
         for label, settings in CASES:
+            runner = run_deep if settings.pop("deep", False) else run_hierarchical
             outcomes = [
-                run_hierarchical(problem, DIMENSION, seed, BUDGET, **settings)
-                for seed in SEEDS
+                runner(problem, DIMENSION, seed, BUDGET, **settings) for seed in SEEDS
             ]
             _report(
                 name,
