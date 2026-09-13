@@ -244,8 +244,16 @@ def create_design_space(
     branching: int,
     levels: int,
     digits: list[list[int]],
+    weighting: str = "flat",
 ) -> CatalogueDesignSpace:
     """Return the design space of a multi-resolution subdivision.
+
+    The weights of a catalogue are what the trust region of the master measures
+    distances with. Left to the catalogue values, a digit costs the same at every
+    level, although changing the coarsest one moves the box $m^{L-1}$ times
+    further than changing the finest. Weighting a level by its **positional
+    value** makes the distance proportional to the displacement, which is what a
+    trust region is supposed to bound.
 
     Args:
         lower: The lower bounds of the design space.
@@ -253,6 +261,8 @@ def create_design_space(
         branching: The number of subdivisions per level.
         levels: The number of levels.
         digits: The subdivision each level starts from, per component.
+        weighting: ``"flat"`` to weigh every level alike, ``"positional"`` to
+            weigh a level by what a digit of it is worth in the box index.
 
     Returns:
         The design space, with one categorical variable per level.
@@ -267,24 +277,37 @@ def create_design_space(
         size=dimension,
     )
     for level in range(1, levels + 1):
+        weights = None
+        if weighting == "positional":
+            weights = arange(branching) * branching ** (levels - level)
+
         design_space.add_categorical_variable(
-            level_name(level), digits[level - 1], list(range(branching))
+            level_name(level),
+            digits[level - 1],
+            list(range(branching)),
+            weights=weights,
         )
 
     return design_space
 
 
-def max_step(dimension: int, branching: int, levels: int) -> int:
+def max_step(
+    dimension: int, branching: int, levels: int, weighting: str = "flat"
+) -> int:
     """Return the diameter of the design space in the distance of the master.
 
     Args:
         dimension: The number of design variables.
         branching: The number of subdivisions per level.
         levels: The number of levels.
+        weighting: The weighting of the levels, ``"flat"`` or ``"positional"``.
 
     Returns:
         The largest distance between two boxes.
     """
+    if weighting == "positional":
+        return dimension * (branching**levels - 1)
+
     return dimension * levels * (branching - 1)
 
 
@@ -295,6 +318,7 @@ def run(
     budget: int,
     branching: int = 2,
     levels: int = 4,
+    weighting: str = "flat",
     configuration: str = DEFAULT_CONFIGURATION,
 ) -> tuple[float, int]:
     """Run the method with one categorical variable per level.
@@ -306,6 +330,8 @@ def run(
         budget: The budget in equivalent objective evaluations.
         branching: The number of subdivisions per level.
         levels: The number of levels.
+        weighting: The weighting of the levels in the distance of the master,
+            ``"flat"`` or ``"positional"``.
         configuration: The configuration of the master.
 
     Returns:
@@ -323,9 +349,10 @@ def run(
         branching,
         levels,
         digits_of(start, lower, upper, branching, levels),
+        weighting,
     )
     settings = dict(CONFIGURATIONS[configuration])
-    settings["max_step"] = max_step(dimension, branching, levels)
+    settings["max_step"] = max_step(dimension, branching, levels, weighting)
     scenario = create_scenario(
         [MDOChain([MultiResolutionMapping(lower, upper, branching, levels, counter)])],
         "f",
@@ -385,14 +412,20 @@ def main() -> None:
                 [outcome.cost_adjoint for outcome in outcomes],
             )
 
-        for branching, levels in ((2, 4), (2, 5), (4, 2)):
+        for branching, levels, weighting in (
+            (2, 4, "flat"),
+            (2, 5, "flat"),
+            (4, 2, "flat"),
+            (2, 4, "positional"),
+            (2, 5, "positional"),
+        ):
             outcomes = [
-                run(problem, DIMENSION, seed, BUDGET, branching, levels)
+                run(problem, DIMENSION, seed, BUDGET, branching, levels, weighting)
                 for seed in SEEDS
             ]
             _report(
                 name,
-                f"levels, m={branching}, L={levels}",
+                f"levels m={branching}, L={levels}, {weighting}",
                 DIMENSION * branching * levels,
                 branching**levels,
                 [best - optimum for best, _ in outcomes],
