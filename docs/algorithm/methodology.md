@@ -90,6 +90,12 @@ $\sum_j m_j$, and the cuts that can be afforded. A fine subdivision is not out o
 reach because of its boxes; it is demanding because its model has more
 coefficients to identify.
 
+That ratio is measurable, and it is where the method turns over: on five
+variables with a budget affording some fifty sub-problems, ten subdivisions per
+variable, fifty binaries over a hundred thousand boxes, is the best density
+measured, while sixteen, eighty binaries, is markedly worse, see
+[the results](benchmark.md#the-density-of-the-subdivision-decides).
+
 ## The bi-level problem
 
 $$

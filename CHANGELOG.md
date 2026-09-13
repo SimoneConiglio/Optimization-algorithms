@@ -49,6 +49,11 @@ and this project adheres to
 
 ### Changed
 
+- The density of a subdivision is bounded by a measurable ratio rather than by
+  the number of boxes: the cut model carries as many coefficients as there are
+  binaries, and a budget affords a few dozen cuts. On five variables, ten
+  subdivisions per variable is the best density measured and sixteen is markedly
+  worse, whatever the boxes they represent.
 - The methodology describes what the method has grown since: what grows with the
   dimension, the boxes or the master, the trust region and the distance it uses,
   subdividing some variables only, and the three shapes of hierarchy, each with

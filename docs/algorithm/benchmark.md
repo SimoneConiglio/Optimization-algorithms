@@ -123,9 +123,28 @@ tried here. Ackley improves for three times the cost. Styblinski-Tang and
 Griewank, whose basins two subdivisions per variable already separate, only get
 more expensive.
 
+Refining further stops paying, and the point where it turns over is the ratio of
+the methodology: the cut model has $\sum_j m_j$ coefficients, and a budget buys a
+few dozen cuts to identify them. Sweeping past the density above, with the radius
+sized to the diameter each time:
+
+| problem | budget | $m=10$ (50 binaries) | $m=16$ (80) | $m=24$ (120) |
+|---------|--------|----------------------|-------------|--------------|
+| Rastrigin | $2500$ | **$1.00$, 2/6** | $4.38$ | $6.96$ |
+| Rastrigin | $5000$ | **$0.50$, 3/6** | $3.39$ | $6.83$ |
+| Ackley | $2500$ | **$10.15$** | $16.61$ | $14.42$ |
+| Ackley | $5000$ | **$8.11$, 1/6** | $9.63$ | $11.66$ |
+
+Ten subdivisions per variable is a sweet spot rather than a floor: at sixteen the
+model carries eighty coefficients against the fifty or so cuts the budget
+affords, and the quality collapses whatever the number of boxes it could
+represent. So a subdivision is usable while its **binaries stay below the
+sub-problems a budget can pay for**, which is the rule the number of boxes never
+gave.
+
 So the subdivision has to **resolve the basins** of the landscape, and it can
-afford to; refining past them spends sub-problems on boxes that were already
-unimodal. Two settings decide whether that is reachable, the radius of the trust
+afford to, up to that ratio; refining past the basins spends sub-problems on
+boxes that were already unimodal. Two settings decide whether that is reachable, the radius of the trust
 region and the convexity margin, both on [the tuning page](tuning.md).
 
 :::{note}
