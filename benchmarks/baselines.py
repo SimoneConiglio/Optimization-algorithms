@@ -226,6 +226,7 @@ def run_box_subdivision(
     n_subdivisions: int = 0,
     configuration: str = DEFAULT_CONFIGURATION,
     overrides: Mapping[str, Any] = MappingProxyType({}),
+    weights: ndarray | None = None,
 ) -> Result:
     """Run the box-subdivision outer approximation.
 
@@ -242,6 +243,9 @@ def run_box_subdivision(
             different mechanisms and are not combined.
         overrides: The settings of the master to override, to sweep one of them
             without defining a configuration of its own.
+        weights: The weights of the subdivisions in the distance the trust
+            region of the master measures. If ``None``, use the subdivision
+            indexes, which is what the catalogue does on its own.
 
     The trust region of the master is sized to the design space, with
     :attr:`.BoxSubdivision.max_step`, for the configurations listed in
@@ -261,7 +265,11 @@ def run_box_subdivision(
     scenario = create_scenario(
         [MDOChain([BoxMapping(subdivision), Objective(counter, dimension)])],
         "f",
-        create_normalized_box_design_space(subdivision, design_space),
+        create_normalized_box_design_space(
+            subdivision,
+            design_space,
+            weights={} if weights is None else dict.fromkeys(["x"], weights),
+        ),
         formulation_name="Benders",
         main_problem_design_variables=["x_box"],
         sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
