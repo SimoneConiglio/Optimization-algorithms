@@ -135,6 +135,44 @@ with the trust region of the master four times smaller than the design space,
 which is its default and is unrelated to the problem.
 :::
 
+## The extensions, and what they are worth
+
+Three extensions were built on top of the method and measured at equal budget,
+five variables, six starting points, $2500$ equivalent evaluations. None of them
+becomes a default, and each says something about where the method's difficulty
+lies. The sweeps behind these numbers are on [the tuning page](tuning.md).
+
+**Subdividing some variables only** wins where the multimodality is concentrated
+and loses where it is not, which is the requirement of the method restated: a
+variable left out keeps all of its basins inside every box.
+
+| subdivision of `partly_multimodal` | boxes | gap | reached |
+|------------------------------------|-------|-----|---------|
+| all 5 variables, $m=2$ | 32 | $1.99$ | 0/3 |
+| 2 variables, $m=10$ | 100 | **$0.00$** | **3/3** |
+| 2 variables, $m=5$ | 25 | $1.99$ | 0/3 |
+
+**A hierarchy** was built in three shapes. The deep one reaches the optimum of
+Ackley from half of the starting points, which nothing else here does; none of
+them beats the flat subdivision elsewhere.
+
+| method | Rastrigin | Ackley | Styblinski-Tang |
+|--------|-----------|--------|-----------------|
+| flat $m=2$ | $4.98$ | $9.71$ | **$0.00$, 6/6, 468** |
+| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6 |
+| two levels, by value | $4.98$ | $6.77$ | $0.00$, 6/6, 1303 |
+| two levels, by cuts | $2.99$ | $15.61$ | $0.00$, 6/6, 1540 |
+| deep, 4 levels of 2 | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
+| frontier, best first | $4.97$ | $9.71$ | — |
+
+**The frontier**, which is the only shape able to undo a choice, is no better
+than the flat method, and the reason is not the backtracking it adds but what it
+costs: every node restarts a master and throws its cuts away, so the same budget
+that fills one model with fifty cuts fills ten models with five each, none of
+them determined enough to rank its own children. What the flat method does
+instead is keep one model over the whole subdivision and localize with its trust
+region, which can also widen again.
+
 ## What this does and does not establish
 
 Established:
@@ -173,3 +211,35 @@ Not established:
 - **the industrial case.** The method earns its complexity when a sub-problem
   costs minutes, which is the regime none of these analytic problems is in, and
   the one where the baselines that need an algebraic form cannot compete.
+
+## Where this can go
+
+Four directions follow from the measurements above, in the order in which they
+would pay.
+
+**A subdivision that follows the basins.** Everything on this page turns on the
+subdivision resolving the basins of the landscape, and the method has no way of
+knowing their spacing. Estimating it, from the curvature at a first sampling or
+from the failures of the local solves themselves, would replace the one setting
+that is tuned by hand and would say, at the same time, which variables deserve
+subdividing at all.
+
+**A master that keeps its cuts while the boxes change.** The hierarchies all
+restart a master per node, which is what makes them lose. A master over a
+**growing set of leaves**, adding binaries as a box is split and keeping every
+cut, would be the genuine lazy branch-and-bound: the frontier without its cost.
+It cannot be built on a catalogue design space fixed at construction, so it means
+writing the master problem rather than calling it.
+
+**A bound worth the name.** A run ends on its trust region or on its stall
+counter, never on its optimality test, because the convexification degrades the
+lower bound by its own constant. Reporting the bound net of a term that vanishes
+at every integer point would make the gap meaningful, and a meaningful gap is
+what turns the method into one that can stop on a proof rather than on a budget.
+
+**The regime the method is for.** Every problem here is analytic and
+bound-constrained, where a sub-problem costs microseconds. The method is built
+for a sub-problem that costs minutes and comes with an adjoint, and for
+constraints that make a box infeasible rather than merely expensive. A case of
+that kind, against Bayesian optimization as well as against the baselines used
+here, is what would establish it.

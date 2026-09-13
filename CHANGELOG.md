@@ -49,6 +49,11 @@ and this project adheres to
 
 ### Changed
 
+- The methodology describes what the method has grown since: what grows with the
+  dimension, the boxes or the master, the trust region and the distance it uses,
+  subdividing some variables only, and the three shapes of hierarchy, each with
+  its figure. The results carry the extensions and end on the directions that
+  follow from them.
 - The documentation is illustrated, `docs/figures.py` drawing every figure for
   the light and the dark theme, and it is split so that the results are readable
   on their own: the benchmark page reports what the method achieves, a page of

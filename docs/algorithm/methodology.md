@@ -66,6 +66,30 @@ $$
 u_j(\alpha) = \sum_k u_{j,k}\, \alpha_{j,k}.
 $$
 
+## What grows with the dimension
+
+The boxes are the Cartesian product of the subdivisions, $\prod_j m_j$, which
+explodes with the number of variables. The **master does not see them**: it sees
+the one-hot binaries, $\sum_j m_j$, which grow linearly. Five variables with ten
+subdivisions each is $100\,000$ boxes and $50$ binaries.
+
+```{image} ../_static/figures/complexity.svg
+:class: only-light
+:alt: The boxes grow as a product, the binaries as a sum
+```
+
+```{image} ../_static/figures/complexity-dark.svg
+:class: only-dark
+:alt: The boxes grow as a product, the binaries as a sum
+```
+
+What a budget buys is neither of those, but the number of **sub-problems solved**,
+a few dozen for a few thousand evaluations. So the quantity that decides whether
+a subdivision is usable is the ratio between the coefficients of the cut model,
+$\sum_j m_j$, and the cuts that can be afforded. A fine subdivision is not out of
+reach because of its boxes; it is demanding because its model has more
+coefficients to identify.
+
 ## The bi-level problem
 
 $$
@@ -124,6 +148,42 @@ fact drives the whole implementation, and the two formulations below are the two
 ways of living with it.
 
 (formulations)=
+## The trust region of the master
+
+The master does not choose among all the boxes at every iteration: it restricts
+the mixed-integer problem to a neighbourhood of the incumbent box $\alpha$,
+
+$$
+\sum_{j \,:\, \alpha'_j = \alpha_j} w_j(\alpha)
+\ \ge\ \sum_j w_j(\alpha) - \texttt{max\_step},
+$$
+
+whose radius shrinks when the upper bound stops improving. The distance is not
+the number of boxes apart: the cost of moving is the sum of the **catalogue
+weights the incumbent selects** over the components the candidate changes, and
+the catalogue of a subdivided variable being the range of its subdivision
+indexes, leaving the first subdivision of a component is free and leaving the
+last one costs $m_j - 1$.
+
+```{image} ../_static/figures/trust_region.svg
+:class: only-light
+:alt: What each radius of the trust region reaches
+```
+
+```{image} ../_static/figures/trust_region-dark.svg
+:class: only-dark
+:alt: What each radius of the trust region reaches
+```
+
+The diameter of the design space in that distance is therefore
+$\sum_j (m_j - 1)$, which
+{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
+returns. Starting from it and letting the master shrink it is what the outer
+approximation assumes; starting below it confines the search from the first
+iteration, and the master's own default radius has nothing to do with the design
+space. This is the setting that decides whether a fine subdivision is usable at
+all, see [the benchmark](benchmark.md#the-density-of-the-subdivision-decides).
+
 ## Two formulations
 
 ### Box as a constraint
@@ -282,6 +342,78 @@ run ends on the trust region instead of on the tolerance, see
 The adaptive repair keeps the bound usable and, on the benchmark, reaches the
 optimum from every starting point, but it enforces convexity only against the
 boxes already visited, so it carries no guarantee.
+
+## Subdividing some variables only
+
+Nothing requires every variable to be subdivided. A variable left out stays an
+ordinary variable of the sub-problem, which keeps the product of the
+subdivisions small while resolving the variables that need it:
+
+```python
+subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+```
+
+```{image} ../_static/figures/partial_refinement.png
+:class: only-light
+:alt: A subdivision of one variable only
+```
+
+```{image} ../_static/figures/partial_refinement-dark.png
+:class: only-dark
+:alt: A subdivision of one variable only
+```
+
+The exchange is only worth it when the objective is close to unimodal in the
+variables left out: one of them keeps all of its basins inside every box, and the
+local solve returns the basin it starts in. It therefore solves a problem whose
+multimodality is concentrated in a few variables, and loses on one that is
+multimodal in all of them.
+
+## Hierarchies of subdivisions
+
+A fine subdivision spends its budget over the whole space. A **hierarchy** spends
+it where it seems to matter: subdivide coarsely, rank the boxes, refine the
+promising ones with a subdivision of their own. The product of the subdivisions
+is the resolution reached, so two levels of two and five resolve as finely as a
+flat ten.
+
+```{image} ../_static/figures/hierarchy.svg
+:class: only-light
+:alt: Three shapes of hierarchy over the boxes
+```
+
+```{image} ../_static/figures/hierarchy-dark.svg
+:class: only-dark
+:alt: Three shapes of hierarchy over the boxes
+```
+
+Three shapes were built and measured, and what separates them is the rule
+deciding what to refine and whether a choice can be undone.
+
+**Two levels** refine the best boxes of a coarse subdivision. The ranking may
+use the value of the sub-problem solved inside a box, which exists only for the
+boxes actually solved, or the **cut model** of the master,
+
+$$
+\hat u(\alpha) = \max_i \, u(\alpha^{(i)})
++ s^{(i)\top}\left(\alpha - \alpha^{(i)}\right),
+$$
+
+which is defined at every box, those never solved included, and which is an
+optimistic estimate, so it ranks boxes far from anything solved first.
+
+**Deep and narrow** splits every variable in two at each of several levels,
+reaching $2^{\text{depth}}$ subdivisions per variable while keeping $2n$
+coefficients per level, which is the only shape that improves the ratio of the
+previous section.
+
+**A frontier** keeps the open boxes of every level in one queue and expands the
+most promising, so a box passed over early can still be taken later. That is a
+spatial branch-and-bound over the subdivision, and the only shape that can undo a
+choice.
+
+Their measured behaviour, and the reason none of them becomes the default, is in
+[the results](benchmark.md#the-extensions-and-what-they-are-worth).
 
 ## Relation to spatial branch-and-bound
 

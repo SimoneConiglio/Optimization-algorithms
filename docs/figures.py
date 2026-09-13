@@ -355,6 +355,120 @@ def draw_trust_region(foreground: str):
     return figure
 
 
+def draw_complexity(foreground: str):  # noqa: ARG001
+    """Draw what grows with the dimension, the boxes or the master."""
+    figure, axes = plt.subplots(figsize=(5.6, 3.2))
+    dimensions = arange(1, 11)
+    for subdivisions, colour in ((10, ACCENT), (2, SECOND)):
+        axes.semilogy(
+            dimensions,
+            subdivisions**dimensions,
+            color=colour,
+            linewidth=1.8,
+            label=f"boxes, $m={subdivisions}$",
+        )
+        axes.semilogy(
+            dimensions,
+            subdivisions * dimensions,
+            color=colour,
+            linewidth=1.8,
+            linestyle="--",
+            label=f"binaries, $m={subdivisions}$",
+        )
+
+    axes.set_xlabel("number of design variables")
+    axes.set_ylabel("count")
+    axes.set_title("The master grows with the binaries, not with the boxes")
+    axes.legend(fontsize=8, ncols=2)
+    return figure
+
+
+def draw_hierarchy(foreground: str):
+    """Draw the shapes of hierarchy, and the frontier that backtracks."""
+    figure, axes_row = plt.subplots(1, 3, figsize=(11.0, 3.4))
+    for axes in axes_row:
+        axes.set_xticks([])
+        axes.set_yticks([])
+        axes.set_aspect("equal")
+        axes.set_xlim(0, 1)
+        axes.set_ylim(0, 1)
+
+    def grid(axes, count, origin=(0.0, 0.0), size=1.0, colour=None, width=0.6):
+        """Draw a grid of boxes."""
+        step = size / count
+        for i in range(count):
+            for j in range(count):
+                axes.add_patch(
+                    plt.Rectangle(
+                        (origin[0] + i * step, origin[1] + j * step),
+                        step,
+                        step,
+                        facecolor="none",
+                        edgecolor=colour or foreground,
+                        linewidth=width,
+                    )
+                )
+
+    # Two levels: a coarse grid, one box refined.
+    grid(axes_row[0], 2)
+    grid(axes_row[0], 5, origin=(0.5, 0.0), size=0.5, colour=ACCENT, width=0.9)
+    axes_row[0].add_patch(
+        plt.Rectangle(
+            (0.5, 0.0), 0.5, 0.5, facecolor="none", edgecolor=ACCENT, linewidth=2.4
+        )
+    )
+    axes_row[0].set_title("two levels\ncoarse, then one box refined")
+
+    # Deep: the same box split again and again.
+    origin, size = (0.0, 0.0), 1.0
+    for depth in range(4):
+        grid(
+            axes_row[1],
+            2,
+            origin=origin,
+            size=size,
+            colour=ACCENT if depth == 3 else foreground,
+            width=0.9 if depth == 3 else 0.6,
+        )
+        size /= 2.0
+        origin = (origin[0] + size, origin[1])
+
+    axes_row[1].set_title("deep and narrow\neach level splits in two")
+
+    # Frontier: open boxes at several levels, the next one taken marked.
+    grid(axes_row[2], 2)
+    grid(axes_row[2], 2, origin=(0.5, 0.5), size=0.5, colour=SECOND, width=0.9)
+    grid(axes_row[2], 2, origin=(0.0, 0.0), size=0.5, colour=SECOND, width=0.9)
+    axes_row[2].add_patch(
+        plt.Rectangle(
+            (0.25, 0.0), 0.25, 0.25, facecolor=ACCENT, alpha=0.35, edgecolor=ACCENT
+        )
+    )
+    axes_row[2].add_patch(
+        plt.Rectangle(
+            (0.5, 0.75), 0.25, 0.25, facecolor=ACCENT, alpha=0.35, edgecolor=ACCENT
+        )
+    )
+    axes_row[2].set_title("frontier\nopen boxes of every level compete")
+    return figure
+
+
+def draw_partial_refinement(foreground: str):
+    """Draw a subdivision of some of the variables only."""
+    figure, axes = plt.subplots(figsize=(5.0, 4.2))
+    x = linspace(-4.1, 5.9, 300)
+    grid_x, grid_y = meshgrid(x, x)
+    axes.contourf(grid_x, grid_y, partly_multimodal(grid_x, grid_y), 40, cmap="Greys_r")
+    for position in linspace(-4.1, 5.9, 11):
+        axes.axvline(position, color=ACCENT, linewidth=0.9)
+
+    axes.plot([0.0], [0.0], marker="*", color="#ffd43b", markersize=14)
+    axes.set_xlabel("$x_1$, subdivided, the objective is multimodal in it")
+    axes.set_ylabel("$x_2$, left to the sub-problem")
+    axes.set_title("Subdividing the variables that need it, and only those")
+    return figure
+
+
 def draw_problems(foreground: str):
     """Draw the benchmark problems in two dimensions."""
     problems = (
@@ -594,6 +708,9 @@ FIGURES = {
     "cuts": (draw_cuts, "svg"),
     "convexification": (draw_convexification, "svg"),
     "trust_region": (draw_trust_region, "svg"),
+    "complexity": (draw_complexity, "svg"),
+    "hierarchy": (draw_hierarchy, "svg"),
+    "partial_refinement": (draw_partial_refinement, "png"),
     "problems": (draw_problems, "png"),
     "landscape_slice": (draw_landscape_slice, "svg"),
     "sampling": (draw_sampling, "png"),
