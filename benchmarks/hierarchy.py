@@ -477,9 +477,11 @@ def main() -> None:
             )
 
         for label, settings in CASES:
-            runner = run_deep if settings.pop("deep", False) else run_hierarchical
+            # Copy, the cases being shared by the problems of the loop.
+            arguments = dict(settings)
+            runner = run_deep if arguments.pop("deep", False) else run_hierarchical
             outcomes = [
-                runner(problem, DIMENSION, seed, BUDGET, **settings) for seed in SEEDS
+                runner(problem, DIMENSION, seed, BUDGET, **arguments) for seed in SEEDS
             ]
             _report(
                 name,
