@@ -53,7 +53,10 @@ and this project adheres to
   the light and the dark theme, and it is split so that the results are readable
   on their own: the benchmark page reports what the method achieves, a page of
   its own covers the tuning of the master, and two appendices describe and cite
-  the benchmark problems and the baselines.
+  the benchmark problems and the baselines. The appendix on the baselines gives
+  the algorithm of each, the settings it is run with, how the budget is enforced
+  across methods called from Python and from a C extension, what is deliberately
+  absent, and a figure of where each one evaluates the objective.
 - The project is named `gemseo-box-subdivision`, since it is about the
   box-subdivision outer approximation rather than a collection of
   algorithms. The package is `gemseo_box_subdivision`.

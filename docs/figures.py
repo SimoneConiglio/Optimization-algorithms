@@ -29,6 +29,7 @@ from pathlib import Path
 
 import matplotlib
 from numpy import arange
+from numpy import array
 from numpy import cos
 from numpy import e
 from numpy import exp
@@ -77,18 +78,12 @@ def ackley(x, y):
 
 def styblinski_tang(x, y):
     """Return the Styblinski-Tang function of two variables."""
-    return 0.5 * (
-        x**4 - 16 * x**2 + 5 * x + y**4 - 16 * y**2 + 5 * y
-    )
+    return 0.5 * (x**4 - 16 * x**2 + 5 * x + y**4 - 16 * y**2 + 5 * y)
 
 
 def griewank(x, y):
     """Return the Griewank function of two variables."""
-    return (
-        1.0
-        + (x**2 + y**2) / 4000.0
-        - cos(x) * cos(y / sqrt(2.0))
-    )
+    return 1.0 + (x**2 + y**2) / 4000.0 - cos(x) * cos(y / sqrt(2.0))
 
 
 def partly_multimodal(x, y):
@@ -238,8 +233,7 @@ def draw_bilevel(foreground: str):
     axes.text(
         0.5,
         0.06,
-        "the master keeps every cut, so each solved box "
-        "narrows the choice of the next",
+        "the master keeps every cut, so each solved box narrows the choice of the next",
         ha="center",
         color=foreground,
         fontsize=8.5,
@@ -430,6 +424,89 @@ def draw_landscape_slice(foreground: str):
     return figure
 
 
+def _sample(method: str, budget: int = 400):
+    """Return the points a method evaluates on Rastrigin in two dimensions.
+
+    Args:
+        method: The name of the method.
+        budget: The budget in equivalent objective evaluations.
+
+    Returns:
+        The evaluated points.
+    """
+    import logging
+
+    from benchmarks import baselines
+    from benchmarks.problems import PROBLEMS
+
+    logging.disable(logging.CRITICAL)
+    points = []
+
+    def recording(base):
+        """Return a counter class recording where the objective is evaluated."""
+
+        class Recorder(base):
+            """A counter recording where the objective is evaluated."""
+
+            def objective(self, x):  # noqa: ANN001, ANN202, D102
+                points.append(x.copy())
+                return super().objective(x)
+
+        return Recorder
+
+    # The methods using no gradient count with the plain counter, the others
+    # with the budgeted one, so both have to be recorded.
+    originals = (baselines.BudgetedCounter, baselines.Counter)
+    baselines.BudgetedCounter = recording(originals[0])
+    baselines.Counter = recording(originals[1])
+    try:
+        baselines.run(method, PROBLEMS["rastrigin"], 2, 11, budget)
+    finally:
+        baselines.BudgetedCounter, baselines.Counter = originals
+
+    return array(points)
+
+
+def draw_sampling(foreground: str):
+    """Draw where each method evaluates the objective."""
+    figure, axes_row = plt.subplots(1, 4, figsize=(12.0, 3.3))
+    x = linspace(-4.1, 5.9, 300)
+    grid_x, grid_y = meshgrid(x, x)
+    values = rastrigin(grid_x, grid_y)
+    titles = {
+        "box_subdivision": "box subdivision",
+        "multistart": "multistart of SLSQP",
+        "cmaes": "CMA-ES",
+        "direct": "DIRECT",
+    }
+    for axes, (method, title) in zip(axes_row, titles.items(), strict=True):
+        axes.contourf(grid_x, grid_y, values, 30, cmap="Greys_r")
+        sampled = _sample(method)
+        axes.plot(
+            sampled[:, 0],
+            sampled[:, 1],
+            marker="o",
+            markersize=2.0,
+            linestyle="none",
+            color=ACCENT,
+            alpha=0.75,
+        )
+        axes.plot(
+            [0.0], [0.0], marker="*", color="#ffd43b", markersize=12, linestyle="none"
+        )
+        axes.set_title(f"{title}\n{len(sampled)} evaluations")
+        axes.set_xticks([])
+        axes.set_yticks([])
+        axes.set_aspect("equal")
+
+    figure.supxlabel(
+        "the same budget on Rastrigin, the star marking the global optimum",
+        color=foreground,
+        fontsize=8.5,
+    )
+    return figure
+
+
 def draw_results(foreground: str):
     """Draw the cost of each method, per problem and dimension."""
     labels = (
@@ -481,9 +558,7 @@ def draw_results(foreground: str):
         "Cost at equal budget, a tick per starting point reaching the optimum",
         pad=26,
     )
-    axes.legend(
-        ncols=4, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.10)
-    )
+    axes.legend(ncols=4, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.10))
     return figure
 
 
@@ -494,8 +569,12 @@ def draw_density(foreground: str):  # noqa: ARG001
     coarse = (4.98, 9.71, 0.0, 0.06)
     fine = (0.0, 7.08, 0.0, 0.11)
     positions = arange(len(labels))
-    axes.bar(positions - 0.2, coarse, 0.4, color=SECOND, label="2 subdivisions (32 boxes)")
-    axes.bar(positions + 0.2, fine, 0.4, color=ACCENT, label=r"10 subdivisions ($10^5$)")
+    axes.bar(
+        positions - 0.2, coarse, 0.4, color=SECOND, label="2 subdivisions (32 boxes)"
+    )
+    axes.bar(
+        positions + 0.2, fine, 0.4, color=ACCENT, label=r"10 subdivisions ($10^5$)"
+    )
     axes.set_xticks(positions)
     axes.set_xticklabels(labels, rotation=12, ha="right")
     axes.set_ylabel("distance to the optimum")
@@ -512,6 +591,7 @@ FIGURES = {
     "trust_region": (draw_trust_region, "svg"),
     "problems": (draw_problems, "png"),
     "landscape_slice": (draw_landscape_slice, "svg"),
+    "sampling": (draw_sampling, "png"),
     "results": (draw_results, "svg"),
     "density": (draw_density, "svg"),
 }
