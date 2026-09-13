@@ -98,8 +98,12 @@ CASES = (
         {"coarse": 2, "fine": 5, "n_refined": 2, "ranking": "cuts"},
     ),
     (
-        "3 then 4, refine 2, cuts",
-        {"coarse": 3, "fine": 4, "n_refined": 2, "ranking": "cuts"},
+        "2 then 5, refine 2, mixed",
+        {"coarse": 2, "fine": 5, "n_refined": 2, "ranking": "mixed"},
+    ),
+    (
+        "2 then 5, refine 4, mixed",
+        {"coarse": 2, "fine": 5, "n_refined": 4, "ranking": "mixed"},
     ),
 )
 """The hierarchies to compare, against the flat subdivisions."""
@@ -278,7 +282,35 @@ def _rank_by_cuts(solved, subdivision):  # noqa: ANN001, ANN201
     return [boxes[rank] for rank in argsort(model)]
 
 
-RANKINGS = {"value": _rank_by_value, "cuts": _rank_by_cuts}
+def _rank_mixed(solved, subdivision):  # noqa: ANN001, ANN201
+    """Alternate the two rules, the first box from each in turn.
+
+    The two rules fail on opposite landscapes: the value is noise where a coarse
+    box holds many basins, and the cut model, being an optimistic estimate,
+    extrapolates towards boxes far from anything solved, which is exploration
+    where the value ranking already points at the right region. Taking one box
+    from each in turn refines both the best box seen and the most promising
+    unseen one.
+
+    Args:
+        solved: The solved boxes.
+        subdivision: The subdivision of the level.
+
+    Returns:
+        The one-hot vectors, from the most promising.
+    """
+    by_value = _rank_by_value(solved, subdivision)
+    by_cuts = _rank_by_cuts(solved, subdivision)
+    mixed = []
+    for value_box, cut_box in zip(by_value, by_cuts, strict=False):
+        for box in (value_box, cut_box):
+            if not any((box == other).all() for other in mixed):
+                mixed.append(box)
+
+    return mixed
+
+
+RANKINGS = {"value": _rank_by_value, "cuts": _rank_by_cuts, "mixed": _rank_mixed}
 """The rules deciding which boxes to refine, by name."""
 
 
