@@ -324,6 +324,55 @@ at four subdivisions per variable needs a hundred. So the constant of the
 convexification does depend on the size of the boxes; it is not a rule that
 transfers from one problem to another.
 
+### A hierarchy of subdivisions, and the ranking it rests on
+
+Rather than one fine subdivision of the whole space, a **hierarchy** subdivides
+coarsely, ranks the boxes it has solved, and refines the best ones, the same
+method running again inside the bounds of one box. The product of the two
+subdivisions is the resolution reached, so a coarse level of two and a fine one
+of five resolve as finely as a flat ten, while no master ever sees more than one
+level at a time. It also spends the budget where it seems to matter instead of
+spreading it over $10^5$ boxes.
+
+Five variables, one budget of $2500$ shared by the levels, six starting points,
+`benchmarks/hierarchy.py`:
+
+| problem | flat $m=2$ | flat $m=10$ | 2 then 5, refine 1 | 2 then 5, refine 2 |
+|---------|------------|-------------|--------------------|--------------------|
+| Rastrigin | $4.98$ | **$1.00$, 2/6** | $4.98$ | $4.98$ |
+| Ackley | $9.71$ | $10.15$ | **$6.77$** | $9.90$ |
+| Styblinski-Tang | **$0.00$, 6/6, 466** | $0.00$, 905 | $0.00$, 6/6, 2318 | $0.00$, 6/6, 1997 |
+
+Three regimes, one mechanism, which is the mechanism of the whole method: **the
+value of a box is one local solve started at its centre**, so the ranking that
+decides what to refine is trustworthy only when a box holds one basin.
+
+**Ackley gains**, having a single broad basin: a coarse box that looks good is
+the right region, so concentrating the budget inside it pays, and the hierarchy
+returns a better median than any flat subdivision measured, including $m = 10$ at
+twice the budget.
+
+**Rastrigin does not.** Every hierarchy starting from two subdivisions per
+variable returns exactly the flat $m=2$ value, whatever the budget split and
+whether one, two, three or six boxes are refined: with about five minima per axis
+inside a coarse box, its score is whichever basin its centre falls into, and the
+box holding the global optimum is not the one refined. Only a coarse level fine
+enough to rank meaningfully, three then four, reaches the flat result, and never
+beats it.
+
+**Styblinski-Tang loses outright**, two subdivisions per variable already
+separating its basins: the second level re-solves what was resolved, for four
+times the cost.
+
+So a hierarchy is not a cheaper way to reach a fine resolution; it is a way to
+spend the budget on few, broad basins. What would make it more than that is a
+better refinement rule, and two are worth trying: rank the boxes by the **cut
+model of the master**, which estimates every box including those never solved,
+rather than by the boxes actually solved; and **split a box instead of
+eliminating it** when the master proposes one it has already solved, which is the
+moment the master says it has learnt all it can there, and which would also
+remove the infeasible master that ends a run today.
+
 ### Refining some variables only, and when it pays
 
 The number of boxes is the Cartesian product of the subdivisions, so subdividing

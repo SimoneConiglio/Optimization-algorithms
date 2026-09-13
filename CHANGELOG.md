@@ -102,6 +102,10 @@ and this project adheres to
 - `benchmarks/refine_some_variables.py`, comparing a coarse subdivision of every
   variable with a fine subdivision of some of them, and the `partly_multimodal`
   problem it needs, multimodal in two variables and convex in the others.
+- `benchmarks/hierarchy.py`, subdividing coarsely and refining the boxes that
+  look promising, with the same budget as a flat run. It pays on a landscape of
+  few broad basins and loses on a densely multimodal one, the ranking it rests
+  on being one local solve per box.
 - `BoxSubdivision.max_step`, the largest trust-region step of the master in the
   distance induced by the weights of the boxes, to be passed as its `max_step`
   when a run stops early: the master's own default of ten is smaller than the

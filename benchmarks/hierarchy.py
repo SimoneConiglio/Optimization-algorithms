@@ -1,0 +1,344 @@
+# Copyright 2021 IRT Saint Exupéry, https://www.irt-saintexupery.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License version 3 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""Subdivide coarsely, then refine the boxes that look promising.
+
+A flat subdivision fine enough to resolve the basins spends its budget over the
+whole design space. A **hierarchy** spends it where it seems to matter: a coarse
+level subdivides the whole space and solves boxes with the usual method, its
+boxes are ranked, and the best ones are refined, the same method running again
+inside the bounds of one box with its own subdivision. The product of the two
+subdivisions is the resolution reached, so a coarse level of two and a fine one
+of five resolve as finely as a flat ten, while no master ever sees more than one
+level at a time.
+
+The catch is the **ranking**. The value of a box is a local solve started at its
+centre, so it is meaningful only when the box holds one basin, which is exactly
+what a coarse box does not do. The measurements below follow from that: the
+hierarchy pays on a landscape of few broad basins, where the coarse ranking is
+trustworthy, and loses on a densely multimodal one, where it is noise.
+
+Every level counts against one budget, so the comparison with a flat run is at
+equal cost:
+
+```shell
+python -m benchmarks.hierarchy
+```
+"""
+
+from __future__ import annotations
+
+import logging
+from contextlib import suppress
+from statistics import median
+from typing import TYPE_CHECKING
+
+from gemseo import create_scenario
+from gemseo.algos.design_space import DesignSpace
+from gemseo.core.chains.chain import MDOChain
+from gemseo.settings.formulations import DisciplinaryOpt_Settings
+from gemseo.settings.opt import SLSQP_Settings
+from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (  # noqa: E501
+    BiLevelMasterOuterApproximation_Settings,
+)
+from numpy import argsort
+from numpy import array
+from numpy import full
+from numpy.random import default_rng
+
+from benchmarks.baselines import BudgetedCounter
+from benchmarks.baselines import BudgetExceededError
+from benchmarks.configurations import CONFIGURATIONS
+from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.problems import Objective
+from benchmarks.problems import PROBLEMS
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
+    create_normalized_box_design_space,
+)
+from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
+
+if TYPE_CHECKING:
+    from numpy import ndarray
+
+    from benchmarks.problems import Problem
+
+DIMENSION = 5
+"""The number of design variables."""
+
+BUDGET = 2500
+"""The budget in equivalent objective evaluations, shared by the levels."""
+
+SEEDS = (11, 101, 202, 303, 404, 505)
+"""The seeds of the starting points."""
+
+CASES = (
+    ("2 then 5, refine 1", {"coarse": 2, "fine": 5, "n_refined": 1}),
+    ("2 then 5, refine 2", {"coarse": 2, "fine": 5, "n_refined": 2}),
+    ("3 then 4, refine 2", {"coarse": 3, "fine": 4, "n_refined": 2}),
+)
+"""The hierarchies to compare, against the flat subdivisions."""
+
+
+class Level:
+    """A counter spending a share of the budget of a run.
+
+    The levels of a hierarchy share the budget of the whole run, so that the
+    comparison with a flat run is at equal cost, and each one is stopped when its
+    own share is spent.
+    """
+
+    def __init__(self, shared: BudgetedCounter, dimension: int, allowance: int) -> None:
+        """
+        Args:
+            shared: The counter of the whole run.
+            dimension: The number of design variables.
+            allowance: The share of the budget of this level.
+        """  # noqa: D205, D212
+        self.__shared = shared
+        self.__dimension = dimension
+        self.__allowance = allowance
+        self.__start = shared.cost(dimension, adjoint=True)
+
+    def __check(self) -> None:
+        """Stop the level when its share is spent.
+
+        Raises:
+            BudgetExceededError: When the share of the level is spent.
+        """
+        spent = self.__shared.cost(self.__dimension, adjoint=True) - self.__start
+        if spent >= self.__allowance:
+            raise BudgetExceededError
+
+    def objective(self, x: ndarray) -> float:
+        """Return the objective, counted against the run and against the level.
+
+        Args:
+            x: The design value.
+
+        Returns:
+            The objective value.
+        """
+        self.__check()
+        return self.__shared.objective(x)
+
+    def gradient(self, x: ndarray) -> ndarray:
+        """Return the gradient, counted against the run and against the level.
+
+        Args:
+            x: The design value.
+
+        Returns:
+            The gradient.
+        """
+        self.__check()
+        return self.__shared.gradient(x)
+
+
+def _design_space(
+    lower: ndarray, upper: ndarray, dimension: int, value: ndarray
+) -> DesignSpace:
+    """Return a design space with the given bounds.
+
+    Args:
+        lower: The lower bounds.
+        upper: The upper bounds.
+        dimension: The number of design variables.
+        value: The initial value.
+
+    Returns:
+        The design space.
+    """
+    design_space = DesignSpace()
+    design_space.add_variable(
+        "x", lower_bound=lower, upper_bound=upper, size=dimension, value=value
+    )
+    return design_space
+
+
+def _solve_level(
+    counter: Level, design_space: DesignSpace, dimension: int, n_subdivisions: int
+) -> tuple[BoxSubdivision, list[tuple[ndarray, float]]]:
+    """Run the method once on a design space.
+
+    Args:
+        counter: The counter of the level.
+        design_space: The design space of the level.
+        dimension: The number of design variables.
+        n_subdivisions: The number of subdivisions per variable.
+
+    Returns:
+        The subdivision, and the one-hot vector and value of every solved box.
+    """
+    subdivision = BoxSubdivision.from_design_space(design_space, n_subdivisions)
+    scenario = create_scenario(
+        [MDOChain([BoxMapping(subdivision), Objective(counter, dimension)])],
+        "f",
+        create_normalized_box_design_space(subdivision, design_space),
+        formulation_name="Benders",
+        main_problem_design_variables=["x_box"],
+        sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
+        sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
+    )
+    settings = dict(CONFIGURATIONS[DEFAULT_CONFIGURATION])
+    settings["max_step"] = subdivision.max_step
+    # A budget spent inside a linearization leaves the discipline without its
+    # output, which GEMSEO then reports as a missing key.
+    with suppress(BudgetExceededError, KeyError):
+        scenario.execute(
+            BiLevelMasterOuterApproximation_Settings(
+                max_iter=10000, ub_tol=1e-4, **settings
+            )
+        )
+
+    problem = scenario.formulation.optimization_problem
+    solved = []
+    for key, values in problem.database.items():
+        value = values.get(problem.objective.name)
+        if value is not None:
+            solved.append((array(key.unwrap()).ravel(), float(value)))
+
+    return subdivision, solved
+
+
+def run_hierarchical(
+    problem: Problem,
+    dimension: int,
+    seed: int,
+    budget: int,
+    coarse: int = 2,
+    fine: int = 5,
+    n_refined: int = 1,
+    coarse_share: float = 0.25,
+) -> tuple[float, int]:
+    """Run the two-level hierarchy.
+
+    Args:
+        problem: The problem.
+        dimension: The number of design variables.
+        seed: The seed of the starting point.
+        budget: The budget in equivalent objective evaluations.
+        coarse: The number of subdivisions per variable of the coarse level.
+        fine: The number of subdivisions per variable inside a refined box.
+        n_refined: The number of boxes refined, in the order of their value.
+        coarse_share: The share of the budget spent on the coarse level.
+
+    Returns:
+        The best objective value and the cost under the adjoint convention.
+    """
+    shared = BudgetedCounter(problem, dimension, budget, adjoint=True)
+    start = default_rng(seed).uniform(
+        problem.lower_bound, problem.upper_bound, dimension
+    )
+    subdivision = None
+    solved: list[tuple[ndarray, float]] = []
+    with suppress(BudgetExceededError, KeyError):
+        subdivision, solved = _solve_level(
+            Level(shared, dimension, int(budget * coarse_share)),
+            _design_space(
+                full(dimension, problem.lower_bound),
+                full(dimension, problem.upper_bound),
+                dimension,
+                start,
+            ),
+            dimension,
+            coarse,
+        )
+
+    if not solved:
+        return shared.best, shared.cost(dimension, adjoint=True)
+
+    # The ranking of the coarse boxes is what the hierarchy rests on, and what
+    # it is limited by: the value of a box is one local solve inside it.
+    order = argsort([value for _, value in solved])
+    allowance = max(
+        1, (budget - shared.cost(dimension, adjoint=True)) // max(1, n_refined)
+    )
+    for rank in order[:n_refined]:
+        lower, upper = subdivision.compute_bounds("x", solved[rank][0])
+        with suppress(BudgetExceededError, KeyError):
+            _solve_level(
+                Level(shared, dimension, allowance),
+                _design_space(lower, upper, dimension, 0.5 * (lower + upper)),
+                dimension,
+                fine,
+            )
+
+    return shared.best, shared.cost(dimension, adjoint=True)
+
+
+def main() -> None:
+    """Compare the hierarchies with the flat subdivisions they are made of."""
+    logging.disable(logging.CRITICAL)
+    from benchmarks.baselines import run_box_subdivision
+
+    print(
+        f"{DIMENSION} variables, budget {BUDGET}, "
+        f"median over {len(SEEDS)} starting points\n"
+    )
+    print(f"{'problem':>18} {'method':>22} {'gap':>9} {'cost':>7} {'reached':>8}")
+    for name in ("rastrigin", "ackley", "styblinski_tang"):
+        problem = PROBLEMS[name]
+        optimum = problem.optimum(DIMENSION)
+        for label, n_subdivisions in (("flat m=2", 2), ("flat m=10", 10)):
+            outcomes = [
+                run_box_subdivision(
+                    problem,
+                    DIMENSION,
+                    seed,
+                    BUDGET,
+                    adjoint=True,
+                    n_subdivisions=n_subdivisions,
+                )
+                for seed in SEEDS
+            ]
+            _report(
+                name,
+                label,
+                [outcome.gap(optimum) for outcome in outcomes],
+                [outcome.cost_adjoint for outcome in outcomes],
+            )
+
+        for label, settings in CASES:
+            outcomes = [
+                run_hierarchical(problem, DIMENSION, seed, BUDGET, **settings)
+                for seed in SEEDS
+            ]
+            _report(
+                name,
+                label,
+                [best - optimum for best, _ in outcomes],
+                [cost for _, cost in outcomes],
+            )
+
+    logging.disable(logging.NOTSET)
+
+
+def _report(problem: str, label: str, gaps: list[float], costs: list[int]) -> None:
+    """Print one row of the comparison.
+
+    Args:
+        problem: The name of the problem.
+        label: The name of the method.
+        gaps: The distances to the optimum.
+        costs: The costs.
+    """
+    print(
+        f"{problem:>18} {label:>22} {median(gaps):>9.3f} {median(costs):>7.0f}"
+        f" {sum(gap <= 1e-4 for gap in gaps)}/{len(gaps)}"
+    )
+
+
+if __name__ == "__main__":
+    main()
