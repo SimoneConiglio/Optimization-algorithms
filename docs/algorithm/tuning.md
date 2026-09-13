@@ -324,54 +324,85 @@ at four subdivisions per variable needs a hundred. So the constant of the
 convexification does depend on the size of the boxes; it is not a rule that
 transfers from one problem to another.
 
-### A hierarchy of subdivisions, and the ranking it rests on
+### A hierarchy of subdivisions, and the rule that refines it
 
 Rather than one fine subdivision of the whole space, a **hierarchy** subdivides
-coarsely, ranks the boxes it has solved, and refines the best ones, the same
-method running again inside the bounds of one box. The product of the two
-subdivisions is the resolution reached, so a coarse level of two and a fine one
-of five resolve as finely as a flat ten, while no master ever sees more than one
-level at a time. It also spends the budget where it seems to matter instead of
-spreading it over $10^5$ boxes.
+coarsely, ranks the boxes, and refines the most promising ones, the same method
+running again inside the bounds of one box. The product of the subdivisions is
+the resolution reached, so two levels of two and five resolve as finely as a
+flat ten, and the budget is spent where it seems to matter instead of being
+spread over $10^5$ boxes.
+
+Everything then depends on the **rule deciding what to refine**, and three were
+measured, in `benchmarks/hierarchy.py`:
+
+`value`
+: refine the boxes whose sub-problem returned the best value. It can only
+  propose boxes already solved, a few dozen of them, and their score is one
+  local solve started at a box centre.
+
+`cuts`
+: refine the boxes the **cut model of the master** scores lowest,
+  $\hat u(\alpha) = \max_i u(\alpha^{(i)}) + s^{(i)\top}(\alpha - \alpha^{(i)})$,
+  which is defined at every box, those never solved included. Being an
+  optimistic estimate, it extrapolates downwards far from anything solved, so it
+  ranks distant unexplored boxes first.
+
+`mixed`
+: one box from each ranking in turn.
 
 Five variables, one budget of $2500$ shared by the levels, six starting points,
-`benchmarks/hierarchy.py`:
+median distance to the optimum and the number of runs reaching it:
 
-| problem | flat $m=2$ | flat $m=10$ | 2 then 5, refine 1 | 2 then 5, refine 2 |
-|---------|------------|-------------|--------------------|--------------------|
-| Rastrigin | $4.98$ | **$1.00$, 2/6** | $4.98$ | $4.98$ |
-| Ackley | $9.71$ | $10.15$ | **$6.77$** | $9.90$ |
-| Styblinski-Tang | **$0.00$, 6/6, 466** | $0.00$, 905 | $0.00$, 6/6, 2318 | $0.00$, 6/6, 1997 |
+| method | Rastrigin | Ackley | Styblinski-Tang |
+|--------|-----------|--------|-----------------|
+| flat $m=2$ | $4.98$ | $9.71$ | **$0.00$, 6/6, 468** |
+| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6 |
+| 2 then 5, `value` | $4.98$ | $6.77$ | $0.00$, 6/6, 1303 |
+| 2 then 5, `cuts` | $2.99$ | $15.61$ | $0.00$, 6/6, 1540 |
+| 2 then 5, `mixed` | $4.98$ | $9.90$ | $0.00$, 6/6, 2290 |
+| deep, 4 levels of 2, `value` | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
+| deep, 4 levels of 2, `cuts` | $4.98$ | $14.76$ | $0.00$, 6/6, 1508 |
+| deep, 6 levels of 2, `value` | $4.98$ | $14.96$, 2/6 | $0.00$, 5/6 |
 
-Three regimes, one mechanism, which is the mechanism of the whole method: **the
-value of a box is one local solve started at its centre**, so the ranking that
-decides what to refine is trustworthy only when a box holds one basin.
+**One variant does something no other configuration in this documentation
+does.** The deep hierarchy, splitting every variable in two at each of four
+levels and refining the best box by its value, reaches the optimum of Ackley in
+five dimensions from **three starting points out of six**, where every flat
+subdivision and every two-level hierarchy reaches it from none. Its median is
+worse than the best two-level median, $7.88$ against $6.77$, because the outcome
+is bimodal: it either descends into the central basin and solves the problem, or
+commits to the wrong subdomain and stays there.
 
-**Ackley gains**, having a single broad basin: a coarse box that looks good is
-the right region, so concentrating the budget inside it pays, and the hierarchy
-returns a better median than any flat subdivision measured, including $m = 10$ at
-twice the budget.
+That bimodality is the whole story of the family. **A hierarchy cannot
+backtrack**: the box it refines at one level is the only space the next level
+sees, so an unreliable score compounds instead of averaging out. It follows that
 
-**Rastrigin does not.** Every hierarchy starting from two subdivisions per
-variable returns exactly the flat $m=2$ value, whatever the budget split and
-whether one, two, three or six boxes are refined: with about five minima per axis
-inside a coarse box, its score is whichever basin its centre falls into, and the
-box holding the global optimum is not the one refined. Only a coarse level fine
-enough to rank meaningfully, three then four, reaches the flat result, and never
-beats it.
+- `cuts` helps where the observed values are noise, Rastrigin, $4.98$ to $2.99$,
+  and ruins the case where they are informative, Ackley, $6.77$ to $15.61$: an
+  optimistic model explores, and exploration is wrong when the ranking already
+  points at the right region;
+- `mixed` inherits the worse of the two rather than hedging, halving the budget
+  of each refinement, depth mattering more than coverage here;
+- deeper is not better in itself, six levels being worse than four, each level
+  being one more irreversible commitment.
 
-**Styblinski-Tang loses outright**, two subdivisions per variable already
-separating its basins: the second level re-solves what was resolved, for four
-times the cost.
+None of the three beats the flat fine subdivision on Rastrigin or the flat
+coarse one on Styblinski-Tang, so the hierarchy is not a default. What it is, is
+the only construction here that reaches Ackley at five variables, and the
+measured reason the others do not is a missing ingredient rather than a wrong
+idea: a **best-first frontier** over the boxes of every level, scored by the cut
+model that produced them, which would let a run return to a subdomain it passed
+over. That is a spatial branch-and-bound over the subdivision, and it subsumes
+the three rules above.
 
-So a hierarchy is not a cheaper way to reach a fine resolution; it is a way to
-spend the budget on few, broad basins. What would make it more than that is a
-better refinement rule, and two are worth trying: rank the boxes by the **cut
-model of the master**, which estimates every box including those never solved,
-rather than by the boxes actually solved; and **split a box instead of
-eliminating it** when the master proposes one it has already solved, which is the
-moment the master says it has learnt all it can there, and which would also
-remove the infeasible master that ends a run today.
+:::{note}
+The two-level hierarchy was justified by the statistics of the cut model, and it
+does not improve them: its fine level carries $n \times m$ coefficients against
+the twenty or so cuts a budget affords, which is the flat situation. Only the
+deep hierarchy improves that ratio, $2n$ coefficients per level, and it is the
+one that produces the result above.
+:::
 
 ### Refining some variables only, and when it pays
 

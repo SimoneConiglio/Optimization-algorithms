@@ -103,9 +103,14 @@ and this project adheres to
   variable with a fine subdivision of some of them, and the `partly_multimodal`
   problem it needs, multimodal in two variables and convex in the others.
 - `benchmarks/hierarchy.py`, subdividing coarsely and refining the boxes that
-  look promising, with the same budget as a flat run. It pays on a landscape of
-  few broad basins and loses on a densely multimodal one, the ranking it rests
-  on being one local solve per box.
+  look promising, with the same budget as a flat run, under three rules
+  deciding what to refine: the value of the sub-problem solved in a box, the cut
+  model of the master, which scores every box including those never solved, and
+  a mix of the two, in two levels or in a deep hierarchy splitting every
+  variable in two at each level. The deep one reaches the optimum of Ackley in
+  five dimensions from three starting points out of six, which no flat
+  subdivision here does; none of them beats the flat subdivisions elsewhere, a
+  hierarchy being unable to return to a subdomain it passed over.
 - `BoxSubdivision.max_step`, the largest trust-region step of the master in the
   distance induced by the weights of the boxes, to be passed as its `max_step`
   when a run stops early: the master's own default of ten is smaller than the
