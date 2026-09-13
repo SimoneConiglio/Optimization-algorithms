@@ -137,6 +137,58 @@ of the main problem solves the sub-problem of every box, which is the reference
 the method has to beat — and, being a driver of the same problem, makes the
 comparison isolate the exploration strategy.
 
+## The extensions
+
+Three extensions of the method are implemented, two in the package and one as a
+prototype in the benchmarks.
+
+### Subdividing some of the variables only
+
+{py:meth}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.from_design_space`
+takes the variables to subdivide, and
+{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_normalized_box_design_space`
+keeps the others as they are, so a variable left out of the subdivision stays an
+ordinary variable of the sub-problem, solved by the local solver at every box:
+
+```python
+subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+```
+
+Nothing else changes: {class}`.BoxMapping` maps the subdivided variables alone,
+and the master carries binaries for them alone.
+
+### The radius of the trust region
+
+{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
+returns the diameter of the design space in the distance the master uses,
+$\sum_j (m_j - 1)$, which is what its `max_step` should start from. It is a
+property of the subdivision rather than a setting, and its docstring records the
+metric, the catalogue weights being the subdivision indexes.
+
+### The hierarchies
+
+`benchmarks/hierarchy.py` builds the three shapes on top of the package rather
+than inside it, since each one is a **loop around the method** and not a change
+to it:
+
+`run_hierarchical`
+: two levels, with the boxes to refine chosen by `_rank_by_value`, `_rank_by_cuts`
+  or `_rank_mixed`, the second of which evaluates the cut model of the master,
+  `_cut_model`, over every box of the subdivision.
+
+`run_deep`
+: one box refined per level, every variable split in two, to a given depth.
+
+`run_frontier`
+: a priority queue of open boxes of every level, expanded best first, which is
+  the only shape able to return to a box it passed over.
+
+All three share one budget through `Level`, a counter that spends a share of the
+budget of the run and raises when that share is gone, so that a hierarchy and a
+flat run are compared at equal cost. The cuts of a level are read back from the
+database of its master, which stores the value and the post-optimal sensitivity
+of every solved box.
+
 ## What is checked
 
 - The Jacobians of `BoxConstraint` and `BoxMapping` are verified against finite

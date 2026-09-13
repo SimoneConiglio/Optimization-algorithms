@@ -7,7 +7,7 @@
  Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# Appendix: the baselines
+# Annex B: the baselines
 
 Enumerating the boxes measures the exploration of the master, but it is not what
 a practitioner would otherwise use. The comparison therefore also runs the three
@@ -127,7 +127,7 @@ being deterministic, with `maxfun` and `maxiter` set to the budget.
 | gradient | yes, in each local solve | no | no | yes, in each sub-problem |
 | stochastic | the starting points | yes | no | no |
 | exploits the past | no | the covariance | the partition | the cuts of every solved box |
-| limit guarantee | with infinitely many starts | none | dense sampling | out of reach, see [the tuning page](tuning.md#the-two-caps-that-end-a-run) |
+| limit guarantee | with infinitely many starts | none | dense sampling | out of reach, see [annex C](tuning.md#the-two-caps-that-end-a-run) |
 | parallel | the starts | the population | the potentially optimal rectangles | the boxes of an iteration |
 | natural regime | a few basins, cheap objective | rippled landscapes, no gradient | low dimension | costly sub-problem with an adjoint |
 

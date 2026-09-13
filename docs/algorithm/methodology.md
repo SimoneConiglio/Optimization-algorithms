@@ -344,7 +344,7 @@ non-convexity of $u$ over the relaxed polytope and the cuts are then valid by
 construction, which is the convergence argument; but it also lowers the master's
 lower bound by nearly $\kappa$, so the bound never meets the incumbent and the
 run ends on the trust region instead of on the tolerance, see
-[the benchmark](tuning.md#the-two-caps-that-end-a-run).
+[annex C](tuning.md#the-two-caps-that-end-a-run).
 The adaptive repair keeps the bound usable and, on the benchmark, reaches the
 optimum from every starting point, but it enforces convexity only against the
 boxes already visited, so it carries no guarantee.
@@ -377,11 +377,15 @@ multimodal in all of them.
 
 ## Hierarchies of subdivisions
 
-A fine subdivision spends its budget over the whole space. A **hierarchy** spends
-it where it seems to matter: subdivide coarsely, rank the boxes, refine the
-promising ones with a subdivision of their own. The product of the subdivisions
-is the resolution reached, so two levels of two and five resolve as finely as a
-flat ten.
+A subdivision fine enough to resolve the basins spends its budget over the whole
+design space. A **hierarchy** spends it where it seems to matter: subdivide
+coarsely, rank the boxes, and refine a promising one with a subdivision of its
+own, recursively. Formally, a node of the hierarchy is a box $B = [l, u]$, and
+refining it means running the method of the previous sections on $B$ instead of
+on the original design space, its children being the boxes of that subdivision.
+The resolution after two levels of $m^{(1)}$ and $m^{(2)}$ subdivisions is their
+product, $m^{(1)} m^{(2)}$ per variable, while no master ever carries more than
+$\sum_j m^{(k)}_j$ binaries.
 
 ```{image} ../_static/figures/hierarchy.svg
 :class: only-light
@@ -393,32 +397,92 @@ flat ten.
 :alt: Three shapes of hierarchy over the boxes
 ```
 
-Three shapes were built and measured, and what separates them is the rule
-deciding what to refine and whether a choice can be undone.
+### Scoring a box
 
-**Two levels** refine the best boxes of a coarse subdivision. The ranking may
-use the value of the sub-problem solved inside a box, which exists only for the
-boxes actually solved, or the **cut model** of the master,
+Everything depends on how a box is scored, since the score decides what is
+refined, and two scores are available.
+
+The **value** of a box is the optimum of its sub-problem,
+$u(\alpha) = \min_{x \in B(\alpha)} f(x)$, as returned by the local solve. It is
+an *upper* bound on the true optimum of the box, since a local solve started at
+the centre of $B$ returns the minimum of the basin it lands in. It exists only
+for the boxes actually solved, a few dozen of them at most.
+
+The **cut model** is the lower envelope the master has built from those solves,
 
 $$
-\hat u(\alpha) = \max_i \, u(\alpha^{(i)})
-+ s^{(i)\top}\left(\alpha - \alpha^{(i)}\right),
+\hat u(\alpha) = \max_i \left[ u(\alpha^{(i)})
++ s^{(i)\top}\left(\alpha - \alpha^{(i)}\right) \right],
+\qquad s^{(i)} = \nabla_\alpha u(\alpha^{(i)}),
 $$
 
-which is defined at every box, those never solved included, and which is an
-optimistic estimate, so it ranks boxes far from anything solved first.
+with $s^{(i)}$ the post-optimal sensitivity of the sub-problem. It is defined at
+**every** box of the subdivision, those never solved included, and it is an
+*optimistic* estimate wherever the cuts are valid.
 
-**Deep and narrow** splits every variable in two at each of several levels,
-reaching $2^{\text{depth}}$ subdivisions per variable while keeping $2n$
-coefficients per level, which is the only shape that improves the ratio of the
-previous section.
+The two therefore rank for opposite reasons. Ranking by the value **exploits**:
+it can only propose a box already solved, and its ranking is meaningless when a
+coarse box holds several basins, since the score is then decided by which basin
+the centre falls into. Ranking by the cut model **explores**: far from every
+solved box the cuts extrapolate linearly downwards, so the lowest score belongs
+to a distant, unvisited box.
 
-**A frontier** keeps the open boxes of every level in one queue and expands the
-most promising, so a box passed over early can still be taken later. That is a
-spatial branch-and-bound over the subdivision, and the only shape that can undo a
-choice.
+### Three shapes
 
-Their measured behaviour, and the reason none of them becomes the default, is in
+**Two levels.** Solve the coarse subdivision, rank its boxes, refine the best
+$k$ of them with a share of the budget each:
+
+```text
+solve the coarse subdivision of the whole space
+for each of the k best boxes:
+    solve a fine subdivision of that box
+```
+
+**Deep and narrow.** Split every variable in two at each of $d$ levels, refining
+the best box each time, which reaches $2^d$ subdivisions per variable while
+keeping $2n$ coefficients per level:
+
+```text
+B <- the whole design space
+repeat d times:
+    solve the subdivision of B in two per variable
+    B <- the best box of that subdivision
+```
+
+**A frontier.** Keep the open boxes of every level in one priority queue, expand
+the most promising, and put its children back:
+
+```text
+frontier <- {the whole design space}
+while the budget allows:
+    B <- the box of the frontier with the lowest score
+    solve the subdivision of B
+    push its most promising children onto the frontier
+```
+
+Only the last one can **undo a choice**: the first two descend, so the box
+refined at one level is the only space the next level ever sees, and a score that
+was wrong is never revisited. That is the definition of a spatial
+branch-and-bound, with the cut model in the place where a relaxation would be.
+
+### What a hierarchy costs
+
+A node solved in isolation is a master of its own, and that is where the
+construction pays for itself. Writing $c$ for the number of sub-problems a
+budget affords, a flat run puts all $c$ cuts into **one** model of
+$\sum_j m_j$ coefficients, while a hierarchy of $N$ nodes puts $c/N$ cuts into
+each of $N$ models. The cuts of a parent are moreover expressed over the one-hot
+variables of *its* subdivision, so they have no meaning in the subdivision of a
+child: refining discards them.
+
+That is the trade, and it is the reason the shapes above behave as they do: a
+hierarchy improves the ratio of coefficients to cuts **per level** and destroys
+the model the ratio is about. A hierarchy that did not pay it would need a master
+over a **growing set of leaves**, adding binaries as a box is split and keeping
+every cut, which is a different master problem from the one this package builds
+on, whose catalogue of boxes is fixed when the design space is created.
+
+The measured behaviour of the three shapes, and of the two scores, is in
 [the results](benchmark.md#the-extensions-and-what-they-are-worth).
 
 ## Relation to spatial branch-and-bound

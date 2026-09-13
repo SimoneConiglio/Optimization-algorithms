@@ -7,7 +7,7 @@
  Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# Tuning the master
+# Annex C: tuning the master
 
 The [results](benchmark.md) are what the method achieves once its settings are
 right. This page is how they were found, and what each setting does: the two

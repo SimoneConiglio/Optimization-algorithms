@@ -54,6 +54,13 @@ and this project adheres to
   binaries, and a budget affords a few dozen cuts. On five variables, ten
   subdivisions per variable is the best density measured and sixteen is markedly
   worse, whatever the boxes they represent.
+- The documentation follows the method rather than its history: methodology,
+  implementation, usage, results and a conclusion, with the benchmark problems,
+  the baselines and the sweeps that set the settings of the master moved to
+  annexes A, B and C. The methodology derives the hierarchies of subdivisions,
+  the scores that rank a box and what each shape can and cannot undo, and the
+  implementation and usage pages describe the extensions and how to refine a
+  box.
 - The methodology describes what the method has grown since: what grows with the
   dimension, the boxes or the master, the trust region and the distance it uses,
   subdividing some variables only, and the three shapes of hierarchy, each with

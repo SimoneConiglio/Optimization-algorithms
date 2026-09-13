@@ -7,7 +7,7 @@
  Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# Appendix: the benchmark problems
+# Annex A: the benchmark problems
 
 Four classical multimodal test functions, plus one built for this package. They
 are defined in `benchmarks/problems.py`, with their gradients, each checked

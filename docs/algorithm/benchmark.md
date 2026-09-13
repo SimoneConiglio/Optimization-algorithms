@@ -7,12 +7,12 @@
  Commons, PO Box 1866, Mountain View, CA 94042, USA.
 -->
 
-# Benchmark results
+# Results
 
 What the method achieves, against the exhaustive enumeration of the boxes and
 against the three baselines of the problem class. The problems are described in
 [one appendix](problems.md) and the baselines in [the other](baselines.md); how
-the settings were arrived at is [a page of its own](tuning.md).
+the settings were arrived at is [annex C](tuning.md).
 
 Reproduce with `tox -e benchmark`.
 
@@ -145,7 +145,7 @@ gave.
 So the subdivision has to **resolve the basins** of the landscape, and it can
 afford to, up to that ratio; refining past the basins spends sub-problems on
 boxes that were already unimodal. Two settings decide whether that is reachable, the radius of the trust
-region and the convexity margin, both on [the tuning page](tuning.md).
+region and the convexity margin, both in [annex C](tuning.md).
 
 :::{note}
 An earlier version of this page reported this density as a failure and concluded
@@ -159,7 +159,7 @@ which is its default and is unrelated to the problem.
 Three extensions were built on top of the method and measured at equal budget,
 five variables, six starting points, $2500$ equivalent evaluations. None of them
 becomes a default, and each says something about where the method's difficulty
-lies. The sweeps behind these numbers are on [the tuning page](tuning.md).
+lies. The sweeps behind these numbers are in [annex C](tuning.md).
 
 **Subdividing some variables only** wins where the multimodality is concentrated
 and loses where it is not, which is the requirement of the method restated: a
@@ -192,73 +192,4 @@ them determined enough to rank its own children. What the flat method does
 instead is keep one model over the whole subdivision and localize with its trust
 region, which can also widen again.
 
-## What this does and does not establish
-
-Established:
-
-- against the exhaustive enumeration of the boxes, the outer approximation
-  reaches the same optimum solving about a quarter of them, at about a quarter of
-  the cost;
-- the sub-problem starting point and the guard against non-convexity are both
-  decisive, and both fail silently when wrong;
-- where the subdivision resolves the basins, the method reaches the optimum for
-  three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
-- a subdivision fine enough to resolve them stays tractable, the master growing
-  with the binaries and not with the boxes: Rastrigin in five dimensions, out of
-  reach of every baseline here, is solved over $100\,000$ boxes;
-- subdividing only the variables the objective is multimodal in solves a problem
-  that subdividing every variable coarsely does not, and loses when the
-  multimodality is spread over all of them;
-- the radius of the trust region has to start at the diameter of the design
-  space, $\sum_j (m_j - 1)$, the master's default of ten being unrelated to it.
-
-Not established:
-
-- **generalization.** The constants and the number of subdivisions were tuned on
-  the problems then reported. A claim about the method needs a held-out set or a
-  protocol fixed in advance.
-- **a rule for the number of subdivisions.** It has to follow the spacing of the
-  basins rather than the dimension, and that spacing is not known a priori.
-  Estimating it, from the curvature or from a first sampling, is the most
-  valuable next step, and the same estimate would say which variables to
-  subdivide at all.
-- **the convergence guarantee of the convexification.** A run ends on the trust
-  region or on the stall counter, never on the optimality test, so the guarantee
-  is out of reach whatever the constant, and lifting both caps to recover it
-  costs the sub-problems the method exists to save.
-- **behaviour with constraints.** Every problem here is bound-constrained only.
-- **the industrial case.** The method earns its complexity when a sub-problem
-  costs minutes, which is the regime none of these analytic problems is in, and
-  the one where the baselines that need an algebraic form cannot compete.
-
-## Where this can go
-
-Four directions follow from the measurements above, in the order in which they
-would pay.
-
-**A subdivision that follows the basins.** Everything on this page turns on the
-subdivision resolving the basins of the landscape, and the method has no way of
-knowing their spacing. Estimating it, from the curvature at a first sampling or
-from the failures of the local solves themselves, would replace the one setting
-that is tuned by hand and would say, at the same time, which variables deserve
-subdividing at all.
-
-**A master that keeps its cuts while the boxes change.** The hierarchies all
-restart a master per node, which is what makes them lose. A master over a
-**growing set of leaves**, adding binaries as a box is split and keeping every
-cut, would be the genuine lazy branch-and-bound: the frontier without its cost.
-It cannot be built on a catalogue design space fixed at construction, so it means
-writing the master problem rather than calling it.
-
-**A bound worth the name.** A run ends on its trust region or on its stall
-counter, never on its optimality test, because the convexification degrades the
-lower bound by its own constant. Reporting the bound net of a term that vanishes
-at every integer point would make the gap meaningful, and a meaningful gap is
-what turns the method into one that can stop on a proof rather than on a budget.
-
-**The regime the method is for.** Every problem here is analytic and
-bound-constrained, where a sub-problem costs microseconds. The method is built
-for a sub-problem that costs minutes and comes with an adjoint, and for
-constraints that make a box infeasible rather than merely expensive. A case of
-that kind, against Bayesian optimization as well as against the baselines used
-here, is what would establish it.
+What all of this establishes, and where it can go, is [the conclusion](conclusion.md).

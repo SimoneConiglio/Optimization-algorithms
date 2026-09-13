@@ -51,12 +51,19 @@ Building a GEMSEO scenario with either formulation, and the settings that
 matter.
 :::
 
-:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Benchmark results
+:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Results
 :link: algorithm/benchmark
 :link-type: doc
 
 Four times cheaper than enumerating the boxes, and measured against multistart,
 CMA-ES and DIRECT.
+:::
+
+:::{grid-item-card} {octicon}`check-circle;1.5em;sd-mr-1` Conclusion
+:link: algorithm/conclusion
+:link-type: doc
+
+What the method is once measured, and the directions that follow from it.
 :::
 
 ::::

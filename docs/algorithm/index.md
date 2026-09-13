@@ -23,67 +23,67 @@ two distinct levels.
 :link-type: doc
 
 The motivation, the bi-level formulation and its equations, the two
-formulations, and what the convexification really does.
+formulations, the convexification, the trust region and the hierarchies.
 :::
 
 :::{grid-item-card} Implementation
 :link: implementation
 :link-type: doc
 
-The building blocks contributed to GEMSEO, the one-hot layout they share, and
-the two pitfalls that fail silently.
+The building blocks contributed to GEMSEO, the one-hot layout they share, the
+extensions, and the two pitfalls that fail silently.
 :::
 
 :::{grid-item-card} Usage
 :link: usage
 :link-type: doc
 
-Building a GEMSEO scenario with either formulation, and the settings that
-matter.
+Building a GEMSEO scenario with either formulation, the settings that matter,
+and how a box is refined.
 :::
 
-:::{grid-item-card} Benchmark results
+:::{grid-item-card} Results
 :link: benchmark
 :link-type: doc
 
-Against the enumeration of the boxes and against multistart, CMA-ES and DIRECT,
-and what the density of the subdivision decides.
+Against the enumeration of the boxes, against multistart, CMA-ES and DIRECT,
+what the density decides, and what the extensions are worth.
 :::
 
-:::{grid-item-card} Tuning the master
-:link: tuning
+:::{grid-item-card} Conclusion
+:link: conclusion
 :link-type: doc
 
-The two mechanisms keeping the cuts valid, the trust region, the caps that end a
-run, and how the settings depend on the size of the boxes.
+What the method is once measured, what is established and what is not, and the
+directions that follow.
 :::
 
-:::{grid-item-card} Appendix: the problems
+:::{grid-item-card} Annexes
 :link: problems
 :link-type: doc
 
-The five benchmark functions, their definitions, their bounds and what each one
-tests.
-:::
-
-:::{grid-item-card} Appendix: the baselines
-:link: baselines
-:link-type: doc
-
-Multistart, CMA-ES and DIRECT, how each is run, and how a budget is counted
-across methods that differ that much.
+The benchmark problems, the baselines and how each is run, and the sweeps that
+set the settings of the master.
 :::
 
 ::::
 
 ```{toctree}
 :hidden:
+:caption: The method
 
 methodology
 implementation
 usage
 benchmark
-tuning
+conclusion
+```
+
+```{toctree}
+:hidden:
+:caption: Annexes
+
 problems
 baselines
+tuning
 ```
