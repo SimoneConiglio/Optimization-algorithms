@@ -40,7 +40,11 @@ python -m benchmarks.hierarchy
 from __future__ import annotations
 
 import logging
+import operator
 from contextlib import suppress
+from heapq import heapify
+from heapq import heappop
+from heapq import heappush
 from statistics import median
 from typing import TYPE_CHECKING
 
@@ -88,26 +92,23 @@ SEEDS = (11, 101, 202, 303, 404, 505)
 
 CASES = (
     ("2 then 5, refine 1, value", {"coarse": 2, "fine": 5, "n_refined": 1}),
-    ("2 then 5, refine 2, value", {"coarse": 2, "fine": 5, "n_refined": 2}),
     (
         "2 then 5, refine 1, cuts",
         {"coarse": 2, "fine": 5, "n_refined": 1, "ranking": "cuts"},
     ),
+    ("deep, 4 levels of 2, value", {"runner": "deep", "depth": 4}),
     (
-        "2 then 5, refine 2, cuts",
-        {"coarse": 2, "fine": 5, "n_refined": 2, "ranking": "cuts"},
+        "frontier, 10 expansions, optimistic",
+        {"runner": "frontier", "expansions": 10},
     ),
     (
-        "2 then 5, refine 2, mixed",
-        {"coarse": 2, "fine": 5, "n_refined": 2, "ranking": "mixed"},
+        "frontier, 10 expansions, greedy",
+        {"runner": "frontier", "expansions": 10, "score": "greedy"},
     ),
     (
-        "2 then 5, refine 4, mixed",
-        {"coarse": 2, "fine": 5, "n_refined": 4, "ranking": "mixed"},
+        "frontier, 20 expansions, optimistic",
+        {"runner": "frontier", "expansions": 20},
     ),
-    ("deep, 4 levels of 2, value", {"deep": True, "depth": 4}),
-    ("deep, 4 levels of 2, cuts", {"deep": True, "depth": 4, "ranking": "cuts"}),
-    ("deep, 6 levels of 2, value", {"deep": True, "depth": 6}),
 )
 """The hierarchies to compare, against the flat subdivisions."""
 
@@ -274,6 +275,20 @@ def _rank_by_cuts(solved, subdivision):  # noqa: ANN001, ANN201
     Returns:
         The one-hot vectors, from the most promising.
     """
+    boxes, model = _cut_model(solved, subdivision)
+    return [boxes[rank] for rank in argsort(model)]
+
+
+def _cut_model(solved, subdivision):  # noqa: ANN001, ANN201
+    """Return every box of the subdivision and what the cuts estimate there.
+
+    Args:
+        solved: The solved boxes.
+        subdivision: The subdivision of the level.
+
+    Returns:
+        The one-hot vector of every box, and the value the cuts estimate there.
+    """
     boxes = create_box_samples(subdivision)
     values = array([value for _, value, _ in solved])
     alphas = array([alpha for alpha, _, _ in solved])
@@ -282,7 +297,7 @@ def _rank_by_cuts(solved, subdivision):  # noqa: ANN001, ANN201
     model = (
         values[None, :] + boxes @ slopes.T - (alphas * slopes).sum(axis=1)[None, :]
     ).max(axis=1)
-    return [boxes[rank] for rank in argsort(model)]
+    return boxes, model
 
 
 def _rank_mixed(solved, subdivision):  # noqa: ANN001, ANN201
@@ -444,6 +459,124 @@ def run_deep(
     return shared.best, shared.cost(dimension, adjoint=True)
 
 
+def run_frontier(
+    problem: Problem,
+    dimension: int,
+    seed: int,
+    budget: int,
+    branching: int = 2,
+    expansions: int = 10,
+    score: str = "optimistic",
+    max_depth: int = 8,
+    n_children: int = 4,
+) -> tuple[float, int]:
+    """Search the boxes of every level best first, so that a run can backtrack.
+
+    The hierarchies above descend: the box refined at one level is the only space
+    the next level sees, so a wrong choice is never undone. This one keeps a
+    **frontier** of open boxes from every level at once. It repeatedly takes the
+    most promising box of the frontier, subdivides it, solves what it can inside
+    it, and puts its children back on the frontier with their own scores. A box
+    passed over early is still there to be taken later, which is what the
+    descending hierarchies cannot do, and which makes this a spatial
+    branch-and-bound over the subdivision.
+
+    A box is scored either by the value of the sub-problem solved inside it, an
+    upper bound on the optimum of the box, or by what the cuts of its parent
+    estimate there, an optimistic estimate defined even for a box never solved:
+
+    ``"greedy"``
+        the value where it is known, and the estimate of the cuts otherwise.
+
+    ``"optimistic"``
+        the estimate of the cuts, as a branch-and-bound would, the box whose
+        bound is the lowest being the one that may still hold the optimum.
+
+    ``"solved"``
+        the value, and only the boxes whose sub-problem was solved go on the
+        frontier, so that it compares measurements rather than extrapolations.
+
+    Args:
+        problem: The problem.
+        dimension: The number of design variables.
+        seed: The seed of the starting point.
+        budget: The budget in equivalent objective evaluations.
+        branching: The number of subdivisions per variable of an expansion.
+        expansions: The number of boxes expanded, which sets the budget of each.
+        score: The rule scoring a box, ``"optimistic"``, ``"greedy"`` or
+            ``"solved"``.
+        max_depth: The number of levels below which a box is not subdivided.
+        n_children: The number of children of an expansion put on the frontier,
+            the most promising first.
+
+    Returns:
+        The best objective value and the cost under the adjoint convention.
+    """
+    shared = BudgetedCounter(problem, dimension, budget, adjoint=True)
+    allowance = max(1, budget // expansions)
+    lower = full(dimension, problem.lower_bound)
+    upper = full(dimension, problem.upper_bound)
+    default_rng(seed).uniform(problem.lower_bound, problem.upper_bound, dimension)
+    # The heap holds (score, tie breaker, depth, lower bounds, upper bounds).
+    frontier: list[tuple[float, int, int, ndarray, ndarray]] = [
+        (0.0, 0, 0, lower, upper)
+    ]
+    heapify(frontier)
+    tie = 1
+    while frontier and shared.cost(dimension, adjoint=True) < budget:
+        _, _, depth, lower, upper = heappop(frontier)
+        if depth >= max_depth:
+            continue
+
+        subdivision = None
+        solved: list[tuple[ndarray, float, ndarray]] = []
+        with suppress(BudgetExceededError, KeyError):
+            subdivision, solved = _solve_level(
+                Level(shared, dimension, allowance),
+                _design_space(lower, upper, dimension, 0.5 * (lower + upper)),
+                dimension,
+                branching,
+            )
+
+        if not solved:
+            continue
+
+        observed = {tuple(alpha): value for alpha, value, _ in solved}
+        boxes, model = _cut_model(solved, subdivision)
+        children = []
+        for one_hot, estimate in zip(boxes, model, strict=True):
+            known = observed.get(tuple(one_hot))
+            if score == "solved":
+                # Only the boxes actually solved, scored by a measured value:
+                # the frontier then compares values rather than extrapolations.
+                if known is None:
+                    continue
+
+                children.append((known, one_hot))
+            elif score == "greedy":
+                children.append((estimate if known is None else known, one_hot))
+            else:
+                children.append((estimate, one_hot))
+
+        # Push the most promising children only, a whole level of a fine
+        # subdivision flooding the frontier with extrapolated estimates.
+        children.sort(key=operator.itemgetter(0))
+        for child, one_hot in children[:n_children]:
+            child_lower, child_upper = subdivision.compute_bounds("x", one_hot)
+            heappush(frontier, (float(child), tie, depth + 1, child_lower, child_upper))
+            tie += 1
+
+    return shared.best, shared.cost(dimension, adjoint=True)
+
+
+RUNNERS = {
+    "two_level": run_hierarchical,
+    "deep": run_deep,
+    "frontier": run_frontier,
+}
+"""The shapes of hierarchy, by name."""
+
+
 def main() -> None:
     """Compare the hierarchies with the flat subdivisions they are made of."""
     logging.disable(logging.CRITICAL)
@@ -479,7 +612,7 @@ def main() -> None:
         for label, settings in CASES:
             # Copy, the cases being shared by the problems of the loop.
             arguments = dict(settings)
-            runner = run_deep if arguments.pop("deep", False) else run_hierarchical
+            runner = RUNNERS[arguments.pop("runner", "two_level")]
             outcomes = [
                 runner(problem, DIMENSION, seed, BUDGET, **arguments) for seed in SEEDS
             ]
