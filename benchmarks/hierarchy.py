@@ -61,8 +61,11 @@ from benchmarks.baselines import BudgetedCounter
 from benchmarks.baselines import BudgetExceededError
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
-from benchmarks.problems import Objective
 from benchmarks.problems import PROBLEMS
+from benchmarks.problems import Objective
+from gemseo_box_subdivision.algos.design_space.box_design_space import (
+    create_box_samples,
+)
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
     create_normalized_box_design_space,
 )
@@ -84,9 +87,20 @@ SEEDS = (11, 101, 202, 303, 404, 505)
 """The seeds of the starting points."""
 
 CASES = (
-    ("2 then 5, refine 1", {"coarse": 2, "fine": 5, "n_refined": 1}),
-    ("2 then 5, refine 2", {"coarse": 2, "fine": 5, "n_refined": 2}),
-    ("3 then 4, refine 2", {"coarse": 3, "fine": 4, "n_refined": 2}),
+    ("2 then 5, refine 1, value", {"coarse": 2, "fine": 5, "n_refined": 1}),
+    ("2 then 5, refine 2, value", {"coarse": 2, "fine": 5, "n_refined": 2}),
+    (
+        "2 then 5, refine 1, cuts",
+        {"coarse": 2, "fine": 5, "n_refined": 1, "ranking": "cuts"},
+    ),
+    (
+        "2 then 5, refine 2, cuts",
+        {"coarse": 2, "fine": 5, "n_refined": 2, "ranking": "cuts"},
+    ),
+    (
+        "3 then 4, refine 2, cuts",
+        {"coarse": 3, "fine": 4, "n_refined": 2, "ranking": "cuts"},
+    ),
 )
 """The hierarchies to compare, against the flat subdivisions."""
 
@@ -169,7 +183,7 @@ def _design_space(
 
 def _solve_level(
     counter: Level, design_space: DesignSpace, dimension: int, n_subdivisions: int
-) -> tuple[BoxSubdivision, list[tuple[ndarray, float]]]:
+) -> tuple[BoxSubdivision, list[tuple[ndarray, float, ndarray]]]:
     """Run the method once on a design space.
 
     Args:
@@ -179,7 +193,8 @@ def _solve_level(
         n_subdivisions: The number of subdivisions per variable.
 
     Returns:
-        The subdivision, and the one-hot vector and value of every solved box.
+        The subdivision, and the one-hot vector, the value and the post-optimal
+        sensitivity of every solved box.
     """
     subdivision = BoxSubdivision.from_design_space(design_space, n_subdivisions)
     scenario = create_scenario(
@@ -203,13 +218,68 @@ def _solve_level(
         )
 
     problem = scenario.formulation.optimization_problem
+    name = problem.objective.name
     solved = []
     for key, values in problem.database.items():
-        value = values.get(problem.objective.name)
-        if value is not None:
-            solved.append((array(key.unwrap()).ravel(), float(value)))
+        value = values.get(name)
+        slope = values.get(f"@{name}")
+        if value is not None and slope is not None:
+            solved.append((
+                array(key.unwrap()).ravel(),
+                float(value),
+                array(slope).ravel(),
+            ))
 
     return subdivision, solved
+
+
+def _rank_by_value(solved, subdivision):  # noqa: ANN001, ANN201, ARG001
+    """Rank the boxes by the value of the sub-problem solved inside them.
+
+    Args:
+        solved: The solved boxes.
+        subdivision: The subdivision of the level.
+
+    Returns:
+        The one-hot vectors, from the most promising.
+    """
+    return [solved[rank][0] for rank in argsort([value for _, value, _ in solved])]
+
+
+def _rank_by_cuts(solved, subdivision):  # noqa: ANN001, ANN201
+    r"""Rank **every** box of the subdivision by the cut model of the master.
+
+    The cuts the master has gathered define a lower estimate of the value of the
+    problem over the whole subdivision,
+
+    $$\\hat u(\alpha) = \\max_i \\, u(\alpha^{(i)})
+        + s^{(i)\top}(\alpha - \alpha^{(i)}),$$
+
+    which is defined at the boxes the master never solved as well as at those it
+    did. Ranking by it therefore proposes boxes that were never visited, where
+    ranking by the value can only propose boxes whose sub-problem was solved,
+    that is, at most a few dozen of them.
+
+    Args:
+        solved: The solved boxes.
+        subdivision: The subdivision of the level.
+
+    Returns:
+        The one-hot vectors, from the most promising.
+    """
+    boxes = create_box_samples(subdivision)
+    values = array([value for _, value, _ in solved])
+    alphas = array([alpha for alpha, _, _ in solved])
+    slopes = array([slope for _, _, slope in solved])
+    # One row per box, one column per cut.
+    model = (
+        values[None, :] + boxes @ slopes.T - (alphas * slopes).sum(axis=1)[None, :]
+    ).max(axis=1)
+    return [boxes[rank] for rank in argsort(model)]
+
+
+RANKINGS = {"value": _rank_by_value, "cuts": _rank_by_cuts}
+"""The rules deciding which boxes to refine, by name."""
 
 
 def run_hierarchical(
@@ -221,6 +291,7 @@ def run_hierarchical(
     fine: int = 5,
     n_refined: int = 1,
     coarse_share: float = 0.25,
+    ranking: str = "value",
 ) -> tuple[float, int]:
     """Run the two-level hierarchy.
 
@@ -231,8 +302,11 @@ def run_hierarchical(
         budget: The budget in equivalent objective evaluations.
         coarse: The number of subdivisions per variable of the coarse level.
         fine: The number of subdivisions per variable inside a refined box.
-        n_refined: The number of boxes refined, in the order of their value.
+        n_refined: The number of boxes refined, the most promising first.
         coarse_share: The share of the budget spent on the coarse level.
+        ranking: The rule deciding which boxes to refine, either ``"value"``,
+            the value of the sub-problem solved inside the box, or ``"cuts"``,
+            the cut model of the master, which estimates every box.
 
     Returns:
         The best objective value and the cost under the adjoint convention.
@@ -242,7 +316,7 @@ def run_hierarchical(
         problem.lower_bound, problem.upper_bound, dimension
     )
     subdivision = None
-    solved: list[tuple[ndarray, float]] = []
+    solved: list[tuple[ndarray, float, ndarray]] = []
     with suppress(BudgetExceededError, KeyError):
         subdivision, solved = _solve_level(
             Level(shared, dimension, int(budget * coarse_share)),
@@ -259,14 +333,13 @@ def run_hierarchical(
     if not solved:
         return shared.best, shared.cost(dimension, adjoint=True)
 
-    # The ranking of the coarse boxes is what the hierarchy rests on, and what
-    # it is limited by: the value of a box is one local solve inside it.
-    order = argsort([value for _, value in solved])
+    # The ranking of the coarse boxes is what the hierarchy rests on.
+    promising = RANKINGS[ranking](solved, subdivision)
     allowance = max(
         1, (budget - shared.cost(dimension, adjoint=True)) // max(1, n_refined)
     )
-    for rank in order[:n_refined]:
-        lower, upper = subdivision.compute_bounds("x", solved[rank][0])
+    for one_hot in promising[:n_refined]:
+        lower, upper = subdivision.compute_bounds("x", one_hot)
         with suppress(BudgetExceededError, KeyError):
             _solve_level(
                 Level(shared, dimension, allowance),
