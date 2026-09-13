@@ -244,7 +244,7 @@ def create_design_space(
     branching: int,
     levels: int,
     digits: list[list[int]],
-    weighting: str = "flat",
+    weighting: str = "positional",
 ) -> CatalogueDesignSpace:
     """Return the design space of a multi-resolution subdivision.
 
@@ -261,8 +261,16 @@ def create_design_space(
         branching: The number of subdivisions per level.
         levels: The number of levels.
         digits: The subdivision each level starts from, per component.
-        weighting: ``"flat"`` to weigh every level alike, ``"positional"`` to
-            weigh a level by what a digit of it is worth in the box index.
+        weighting: ``"positional"``, the default, to weigh a level by what a
+            digit of it is worth in the box index, or ``"flat"`` to weigh every
+            level alike, which the catalogue values would do on their own.
+
+    Note:
+        Positional weights fix the **scale** of a level, and no weighting can
+        make this distance a displacement: the master charges the weights the
+        *incumbent* holds on the components a candidate changes, never the
+        difference between the two, so leaving a digit at zero is free whatever
+        the candidate moves to.
 
     Returns:
         The design space, with one categorical variable per level.
@@ -292,7 +300,7 @@ def create_design_space(
 
 
 def max_step(
-    dimension: int, branching: int, levels: int, weighting: str = "flat"
+    dimension: int, branching: int, levels: int, weighting: str = "positional"
 ) -> int:
     """Return the diameter of the design space in the distance of the master.
 
@@ -318,7 +326,7 @@ def run(
     budget: int,
     branching: int = 2,
     levels: int = 4,
-    weighting: str = "flat",
+    weighting: str = "positional",
     configuration: str = DEFAULT_CONFIGURATION,
 ) -> tuple[float, int]:
     """Run the method with one categorical variable per level.
