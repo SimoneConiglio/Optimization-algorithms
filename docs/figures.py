@@ -688,7 +688,7 @@ EXTENSIONS = {
         "2 then 5, value": (4.975, 2500, 0),
         "2 then 5, cuts": (2.985, 2499, 0),
         "deep, 4 of 2": (4.975, 2140, 0),
-        "frontier": (None, None, None),
+        "frontier": (6.700, 2500, 0),
     },
     "Ackley": {
         "flat $m=2$": (9.714, 1226, 0),
@@ -696,7 +696,7 @@ EXTENSIONS = {
         "2 then 5, value": (6.765, 2500, 0),
         "2 then 5, cuts": (15.605, 2500, 0),
         "deep, 4 of 2": (7.880, 2500, 3),
-        "frontier": (None, None, None),
+        "frontier": (9.714, 2500, 0),
     },
     "Styblinski-Tang": {
         "flat $m=2$": (0.0, 468, 6),
@@ -704,7 +704,7 @@ EXTENSIONS = {
         "2 then 5, value": (0.0, 1303, 6),
         "2 then 5, cuts": (0.0, 1540, 6),
         "deep, 4 of 2": (0.0, 1934, 6),
-        "frontier": (None, None, None),
+        "frontier": (0.0, 2500, 6),
     },
 }
 """The extensions against the flat subdivisions, at five variables.

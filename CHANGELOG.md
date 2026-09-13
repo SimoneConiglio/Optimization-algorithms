@@ -54,6 +54,10 @@ and this project adheres to
   binaries, and a budget affords a few dozen cuts. On five variables, ten
   subdivisions per variable is the best density measured and sixteen is markedly
   worse, whatever the boxes they represent.
+- The results show the hierarchies beside the flat subdivisions in a figure of
+  their own, the distance to the optimum and the cost, with a tick per starting
+  point reaching the optimum, and the frontier is measured over six starting
+  points like the rest.
 - The documentation follows the method rather than its history: methodology,
   implementation, usage, results and a conclusion, with the benchmark problems,
   the baselines and the sweeps that set the settings of the master moved to

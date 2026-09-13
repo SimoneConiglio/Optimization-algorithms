@@ -364,6 +364,9 @@ median distance to the optimum and the number of runs reaching it:
 | deep, 4 levels of 2, `value` | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
 | deep, 4 levels of 2, `cuts` | $4.98$ | $14.76$ | $0.00$, 6/6, 1508 |
 | deep, 6 levels of 2, `value` | $4.98$ | $14.96$, 2/6 | $0.00$, 5/6 |
+| frontier, 10 expansions, optimistic | $6.70$ | $9.71$ | $0.00$, 6/6, 2500 |
+| frontier, 10 expansions, greedy | $10.15$ | $9.71$ | $0.00$, 6/6, 2500 |
+| frontier, 20 expansions, optimistic | $8.43$ | $9.71$ | $0.00$, 6/6, 2500 |
 
 **One variant does something no other configuration in this documentation
 does.** The deep hierarchy, splitting every variable in two at each of four
@@ -385,7 +388,11 @@ sees, so an unreliable score compounds instead of averaging out. It follows that
 - `mixed` inherits the worse of the two rather than hedging, halving the budget
   of each refinement, depth mattering more than coverage here;
 - deeper is not better in itself, six levels being worse than four, each level
-  being one more irreversible commitment.
+  being one more irreversible commitment;
+- the frontier, which alone can return to a box it passed over, is the worst of
+  the family on Rastrigin, $6.70$ optimistic and $10.15$ greedy, and more
+  expansions make it worse, $8.43$ at twenty: backtracking does not pay for the
+  model it destroys, each node restarting a master with a handful of cuts.
 
 None of the three beats the flat fine subdivision on Rastrigin or the flat
 coarse one on Styblinski-Tang, so the hierarchy is not a default. What it is, is

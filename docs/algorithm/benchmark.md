@@ -178,15 +178,34 @@ them beats the flat subdivision elsewhere.
 | method | Rastrigin | Ackley | Styblinski-Tang |
 |--------|-----------|--------|-----------------|
 | flat $m=2$ | $4.98$ | $9.71$ | **$0.00$, 6/6, 468** |
-| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6 |
+| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6, 1044 |
 | two levels, by value | $4.98$ | $6.77$ | $0.00$, 6/6, 1303 |
 | two levels, by cuts | $2.99$ | $15.61$ | $0.00$, 6/6, 1540 |
 | deep, 4 levels of 2 | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
-| frontier, best first | $4.97$ | $9.71$ | — |
+| frontier, best first | $6.70$ | $9.71$ | $0.00$, 6/6, 2500 |
 
-**The frontier**, which is the only shape able to undo a choice, is no better
-than the flat method, and the reason is not the backtracking it adds but what it
-costs: every node restarts a master and throws its cuts away, so the same budget
+```{image} ../_static/figures/extensions.svg
+:class: only-light
+:alt: The hierarchies against the flat subdivisions
+```
+
+```{image} ../_static/figures/extensions-dark.svg
+:class: only-dark
+:alt: The hierarchies against the flat subdivisions
+```
+
+Two readings the medians alone hide. The deep hierarchy is the only
+configuration here that **reaches** the optimum of Ackley, from three starting
+points out of six, and its median is worse than the two-level one precisely
+because the outcome is bimodal, a run either descending into the central basin
+or committing to the wrong subdomain. And on Styblinski-Tang every
+configuration solves the problem, so the panel is about cost alone, where the
+flat coarse subdivision wins outright, $468$ evaluations against $1300$ to
+$2500$ for the hierarchies.
+
+**The frontier**, which is the only shape able to undo a choice, is the worst of
+the family on Rastrigin, $6.70$ against $4.98$ for doing nothing at all, and the
+reason is not the backtracking it adds but what it costs: every node restarts a master and throws its cuts away, so the same budget
 that fills one model with fifty cuts fills ten models with five each, none of
 them determined enough to rank its own children. What the flat method does
 instead is keep one model over the whole subdivision and localize with its trust
