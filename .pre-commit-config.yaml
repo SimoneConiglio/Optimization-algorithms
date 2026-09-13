@@ -4,8 +4,10 @@ repos:
   rev: v6.0.0
   hooks:
     - id: trailing-whitespace
+      # The figures are generated, and matplotlib pads its SVG lines.
+      exclude: ^docs/_static/figures/
     - id: end-of-file-fixer
-      exclude: LICENSES/headers
+      exclude: LICENSES/headers|^docs/_static/figures/
     - id: check-yaml
       # !! prefix is specific to mkdocs
       exclude: mkdocs.yml

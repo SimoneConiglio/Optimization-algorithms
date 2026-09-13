@@ -435,6 +435,11 @@ def _sample(method: str, budget: int = 400):
         The evaluated points.
     """
     import logging
+    import sys
+
+    # The benchmarks live at the root of the repository, not on the path of a
+    # script run from the documentation directory.
+    sys.path.insert(0, str(Path(__file__).parent.parent))
 
     from benchmarks import baselines
     from benchmarks.problems import PROBLEMS
