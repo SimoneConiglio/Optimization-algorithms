@@ -681,6 +681,114 @@ def draw_results(foreground: str):
     return figure
 
 
+EXTENSIONS = {
+    "Rastrigin": {
+        "flat $m=2$": (4.975, 900, 0),
+        "flat $m=10$": (0.995, 2500, 2),
+        "2 then 5, value": (4.975, 2500, 0),
+        "2 then 5, cuts": (2.985, 2499, 0),
+        "deep, 4 of 2": (4.975, 2140, 0),
+        "frontier": (None, None, None),
+    },
+    "Ackley": {
+        "flat $m=2$": (9.714, 1226, 0),
+        "flat $m=10$": (10.149, 2500, 0),
+        "2 then 5, value": (6.765, 2500, 0),
+        "2 then 5, cuts": (15.605, 2500, 0),
+        "deep, 4 of 2": (7.880, 2500, 3),
+        "frontier": (None, None, None),
+    },
+    "Styblinski-Tang": {
+        "flat $m=2$": (0.0, 468, 6),
+        "flat $m=10$": (0.0, 1044, 2),
+        "2 then 5, value": (0.0, 1303, 6),
+        "2 then 5, cuts": (0.0, 1540, 6),
+        "deep, 4 of 2": (0.0, 1934, 6),
+        "frontier": (None, None, None),
+    },
+}
+"""The extensions against the flat subdivisions, at five variables.
+
+Each entry is the median distance to the optimum, the median cost and the number
+of starting points out of six from which the optimum was reached, for a budget of
+$2500$ equivalent evaluations, as measured by ``benchmarks/hierarchy.py``.
+"""
+
+
+def draw_extensions(foreground: str):
+    """Draw what the hierarchies are worth against the flat subdivisions."""
+    methods = tuple(next(iter(EXTENSIONS.values())))
+    colours = (SECOND, "#4dabf7", ACCENT, "#f08c00", THIRD, "#868e96")
+    figure, axes_grid = plt.subplots(2, 3, figsize=(11.5, 5.4), sharex="col")
+    positions = arange(len(methods))
+    for column, (problem, methods_of) in enumerate(EXTENSIONS.items()):
+        gaps = [methods_of[method][0] for method in methods]
+        costs = [methods_of[method][1] for method in methods]
+        reached = [methods_of[method][2] for method in methods]
+        for row, (values, label) in enumerate((
+            (gaps, "distance to the optimum"),
+            (costs, "equivalent evaluations"),
+        )):
+            axes = axes_grid[row][column]
+            drawn = [0.0 if value is None else value for value in values]
+            bars = axes.bar(positions, drawn, 0.68, color=colours)
+            for bar, value, count in zip(bars, values, reached, strict=True):
+                if value is None:
+                    axes.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        0.0,
+                        "not run",
+                        ha="center",
+                        va="bottom",
+                        rotation=90,
+                        fontsize=7,
+                        color=foreground,
+                        alpha=0.7,
+                    )
+                elif row == 0 and count:
+                    axes.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        max(drawn) * 0.02 + value,
+                        "\u2713" * count,
+                        ha="center",
+                        fontsize=6.5,
+                        color=colours[list(bars).index(bar)],
+                    )
+
+            if row == 0 and max(drawn) <= 1e-6:
+                # Every run solved the problem: a bar chart of zeros says
+                # nothing, so the panel says it in words.
+                axes.set_ylim(0.0, 1.0)
+                axes.text(
+                    positions.mean(),
+                    0.45,
+                    "every configuration reaches the optimum,\nthey differ in cost",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color=foreground,
+                )
+            elif row == 0:
+                axes.set_ylim(0.0, max(drawn) * 1.25)
+
+            if column == 0:
+                axes.set_ylabel(label)
+
+            if row == 0:
+                axes.set_title(problem)
+            else:
+                axes.set_xticks(positions)
+                axes.set_xticklabels(methods, rotation=35, ha="right", fontsize=8)
+
+    figure.suptitle(
+        "Five variables, one budget of 2500, median over six starting points, "
+        "a tick per run reaching the optimum",
+        fontsize=9.5,
+    )
+    figure.tight_layout()
+    return figure
+
+
 def draw_density(foreground: str):  # noqa: ARG001
     """Draw what the subdivision density does at five variables."""
     figure, axes = plt.subplots(figsize=(6.0, 3.2))
@@ -715,6 +823,7 @@ FIGURES = {
     "landscape_slice": (draw_landscape_slice, "svg"),
     "sampling": (draw_sampling, "png"),
     "results": (draw_results, "svg"),
+    "extensions": (draw_extensions, "svg"),
     "density": (draw_density, "svg"),
 }
 """The figures, by name, with the format each is written in."""
