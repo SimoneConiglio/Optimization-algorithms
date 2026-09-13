@@ -102,26 +102,22 @@ CONFIGURATION_NAMES = tuple(CONFIGURATIONS)
 DEFAULT_CONFIGURATION = "adaptive"
 """The configuration reaching the optimum with the fewest boxes."""
 
-SIZED_TRUST_REGION = frozenset(CONFIGURATION_NAMES)
-"""The configurations whose trust region is sized to the design space.
+TRUST_REGION_RADIUS = 2
+"""The radius of the trust region of the master, in components changed.
 
-The master restricts each iteration to a neighbourhood of the incumbent box, of
-radius ``max_step`` in the distance induced by the weights of the boxes, and its
-own default radius of ten has nothing to do with that space:
-:attr:`.BoxSubdivision.max_step` is its diameter in the same distance, five for
-five variables with two subdivisions but forty-five for five variables with ten.
-Starting from the diameter and letting the master shrink it is what the outer
-approximation assumes; starting below it confines the search from the first
-iteration.
+The master restricts each iteration to a neighbourhood of the incumbent box, and
+the distance it measures is the number of components a candidate changes, every
+subdivision being weighed alike by the design spaces of this package.
 
-That is decisive as soon as the subdivision is fine. On Rastrigin with five
-variables and ten subdivisions each, a hundred thousand boxes but only fifty
-binaries, the run reaches the global optimum from two starting points out of
-three with the radius at forty-five, and returns a gap of sixteen with the radius
-at ten. It is also what the pure convexification needs in two dimensions, where
-it reaches the optimum from all eight starting points instead of six.
+A radius of two is what the measurements support, and it is far from the radius
+at which the region stops constraining,
+:attr:`.BoxSubdivision.max_step`. Letting the master change every component at
+once is markedly worse: on Rastrigin with five variables and ten subdivisions,
+a radius of two reaches the optimum from six starting points out of six for
+$1920$ evaluations, a radius of five from three, and the radius of the design
+space from two. Removing the region altogether is worse still, one out of six.
 
-The price is paid on the coarse subdivisions, where the wider region only buys
-more boxes: the two-dimensional Rastrigin costs $786$ evaluations instead of
-$519$ for the same optimum.
+The two-dimensional benchmark agrees on the cheaper end: every radius solves it
+from every starting point, for $452$ evaluations at a radius of one against
+$810$ with no region at all.
 """

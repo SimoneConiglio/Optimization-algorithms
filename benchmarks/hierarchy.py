@@ -65,6 +65,7 @@ from benchmarks.baselines import BudgetedCounter
 from benchmarks.baselines import BudgetExceededError
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
 from benchmarks.problems import Objective
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
@@ -215,7 +216,7 @@ def _solve_level(
         sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
     )
     settings = dict(CONFIGURATIONS[DEFAULT_CONFIGURATION])
-    settings["max_step"] = subdivision.max_step
+    settings["max_step"] = TRUST_REGION_RADIUS
     # A budget spent inside a linearization leaves the discipline without its
     # output, which GEMSEO then reports as a missing key.
     with suppress(BudgetExceededError, KeyError):

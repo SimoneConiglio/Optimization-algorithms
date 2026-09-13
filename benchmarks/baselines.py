@@ -56,7 +56,7 @@ from numpy.random import default_rng
 
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
-from benchmarks.configurations import SIZED_TRUST_REGION
+from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import Counter
 from benchmarks.problems import Objective
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
@@ -247,10 +247,9 @@ def run_box_subdivision(
             region of the master measures. If ``None``, use the subdivision
             indexes, which is what the catalogue does on its own.
 
-    The trust region of the master is sized to the design space, with
-    :attr:`.BoxSubdivision.max_step`, for the configurations listed in
-    :data:`.SIZED_TRUST_REGION`, and left at the master's own radius for the
-    others.
+    The trust region of the master keeps its radius at
+    :data:`.TRUST_REGION_RADIUS`, so that an iteration changes a couple of
+    components at most, which is what the measurements support.
 
     Returns:
         The outcome of the run.
@@ -276,9 +275,7 @@ def run_box_subdivision(
         sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
     )
     settings = dict(CONFIGURATIONS[configuration])
-    if configuration in SIZED_TRUST_REGION:
-        settings["max_step"] = subdivision.max_step
-
+    settings["max_step"] = TRUST_REGION_RADIUS
     settings.update(overrides)
 
     with suppress(BudgetExceededError):

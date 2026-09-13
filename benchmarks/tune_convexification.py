@@ -126,7 +126,7 @@ def main(n_starting_points: int = 8, seed: int = 11) -> None:
     _, enumerated_boxes, enumerated_evaluations = _run_enumeration(
         starting_points[0], "normalized"
     )
-    subdivision = _create_scenario(starting_points[0], "normalized")[1]
+    _create_scenario(starting_points[0], "normalized")[1]
 
     def report(label: str, reached, worst, boxes, evaluations) -> None:
         """Print one row of a sweep, with the cost against the enumeration.
@@ -147,7 +147,7 @@ def main(n_starting_points: int = 8, seed: int = 11) -> None:
 
     print(
         "PURE CONVEXIFICATION, adapt off, one parallel point,\n"
-        f"trust region sized to the design space (max_step = {subdivision.max_step})\n"
+        f"trust region of {TRUST_REGION_RADIUS} components changed\n"
         f"{'constant':>10} {header}"
     )
     for constant in CONSTANTS:
@@ -160,7 +160,7 @@ def main(n_starting_points: int = 8, seed: int = 11) -> None:
                 min_dfk=0.0,
                 convexification_constant=constant,
                 number_of_parallel_points=1,
-                max_step=subdivision.max_step,
+                max_step=TRUST_REGION_RADIUS,
             ),
         )
 

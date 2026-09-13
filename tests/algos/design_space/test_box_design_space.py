@@ -129,8 +129,15 @@ def test_one_hot_layout_matches_the_constraint(box_design_space, subdivision) ->
 
 
 def test_default_weights(box_design_space) -> None:
-    """Check that the subdivision indexes are the default weights."""
-    assert allclose(box_design_space.get_catalogue_weights("x_box"), [0, 1, 2, 3])
+    """Check that every subdivision is weighed alike by default.
+
+    The distance the master measures is then the number of components a
+    candidate box changes. Left to the catalogue, the weights would be the
+    subdivision indexes, which express no proximity: the constraint charges the
+    weights of the incumbent over the components changed, whatever they change
+    to.
+    """
+    assert allclose(box_design_space.get_catalogue_weights("x_box"), [1, 1, 1, 1])
 
 
 def test_custom_weights(subdivision, design_space) -> None:

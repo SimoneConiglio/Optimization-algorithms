@@ -62,8 +62,14 @@ def create_box_design_space(
     keeping the categorical variables in the main problem.
 
     The catalogue of a subdivided variable is the range of its subdivision
-    indexes, so that the default weights make two consecutive subdivisions
-    neighbours in the distance used by the main problem.
+    indexes, and every subdivision is weighed alike, so that the distance the
+    main problem measures is the **number of components** a candidate box
+    changes. Leaving the weights at the catalogue values, which is what a
+    catalogue design space does on its own, would not express a proximity: the
+    constraint charges the weights the *incumbent* holds on the components a
+    candidate changes and never reads what it changes them to, so leaving the
+    first subdivision would be free and leaving the last would cost the range,
+    however near the candidate is.
 
     Args:
         subdivision: The Cartesian subdivision of the design space.
@@ -76,7 +82,8 @@ def create_box_design_space(
             :attr:`.BoxSubdivision.ONE_HOT_SUFFIX`.
         weights: The weights of the subdivisions of each variable, used by the
             main problem to measure the distance between two boxes.
-            If empty, use the subdivision indexes.
+            If empty, weigh every subdivision alike, so that the distance is the
+            number of components a candidate box changes.
 
     Returns:
         The design space of the box-subdivided problem.
@@ -134,7 +141,7 @@ def _add_categorical_variables(
             one_hot_name,
             [int(index) for index in indexes],
             list(range(n_subdivisions[variable_name])),
-            weights=weights.get(variable_name),
+            weights=weights.get(variable_name, ones(n_subdivisions[variable_name])),
         )
 
 
@@ -167,7 +174,8 @@ def create_normalized_box_design_space(
             :attr:`.BoxSubdivision.NORMALIZED_SUFFIX`.
         weights: The weights of the subdivisions of each variable, used by the
             main problem to measure the distance between two boxes.
-            If empty, use the subdivision indexes.
+            If empty, weigh every subdivision alike, so that the distance is the
+            number of components a candidate box changes.
 
     Returns:
         The design space of the box-subdivided problem in normalized variables.

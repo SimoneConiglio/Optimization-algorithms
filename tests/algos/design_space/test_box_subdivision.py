@@ -82,13 +82,13 @@ def test_counts(design_space) -> None:
 def test_max_step(design_space) -> None:
     """Check the largest trust-region step, in the distance of the master.
 
-    The weights of the catalogue values being their indexes, the distance is the
-    sum, over the changed components, of the index the incumbent selects, so its
-    largest value is reached from the last subdivision of every component.
+    Every subdivision being weighed alike, the distance is the number of
+    components a candidate changes, so its largest value is the number of
+    components of the subdivision.
     """
     subdivision = BoxSubdivision.from_design_space(design_space, {"x": 2, "y": 4})
-    # x has 2 components with 2 subdivisions, y has 1 component with 4.
-    assert subdivision.max_step == 2 * (2 - 1) + 1 * (4 - 1)
+    # x has 2 components and y has 1.
+    assert subdivision.max_step == 3
 
 
 def test_single_subdivision(design_space) -> None:
