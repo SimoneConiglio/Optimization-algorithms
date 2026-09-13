@@ -135,15 +135,15 @@ relaxed problem, and they are not meant to be combined:
 : `adapt=False` with `convexification_constant` $\kappa > 0$, the margin left at
   zero. The master adds $\kappa\, C(\alpha)$ to the relaxed problem, which is the
   configuration carrying the convergence guarantee, at the price of a lower bound
-  degraded by $\kappa$, see [the benchmark](benchmark.md#the-master-has-two-mechanisms-and-they-must-not-be-combined).
+  degraded by $\kappa$, see [the benchmark](tuning.md#the-master-has-two-mechanisms-and-they-must-not-be-combined).
 
 | Setting | Recommended | Why |
 |---------|-------------|-----|
 | `adapt` | `True` | repairs the cut slopes against the boxes already solved |
 | `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
-| `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [the benchmark](benchmark.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
+| `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [the benchmark](tuning.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
 | `number_of_parallel_points` | $4$ | decisive: with a single point the master stops after two or three boxes |
-| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. Its own default of $10$ is unrelated to the design space, whose diameter is $\sum_j (m_j - 1)$: at five variables and ten subdivisions that is $45$, and leaving the radius at ten is the difference between solving Rastrigin and returning a gap of sixteen, see [the benchmark](benchmark.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
+| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. Its own default of $10$ is unrelated to the design space, whose diameter is $\sum_j (m_j - 1)$: at five variables and ten subdivisions that is $45$, and leaving the radius at ten is the difference between solving Rastrigin and returning a gap of sixteen, see [the benchmark](tuning.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
 | `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
 
@@ -151,7 +151,7 @@ And one choice that is not a setting of the algorithm but of the subdivision:
 
 | Choice | Recommended | Why |
 |--------|-------------|-----|
-| `n_subdivisions` | fine enough to resolve the basins, over the variables the objective is multimodal in | a box that still holds several basins defeats the local solve, and the number of boxes costs evaluations rather than master size, the binaries growing linearly. See [the benchmark](benchmark.md#the-subdivision-has-to-resolve-the-basins-and-it-can-afford-to) |
+| `n_subdivisions` | fine enough to resolve the basins, over the variables the objective is multimodal in | a box that still holds several basins defeats the local solve, and the number of boxes costs evaluations rather than master size, the binaries growing linearly. See [the benchmark](benchmark.md#the-density-of-the-subdivision-decides) |
 
 ## Subdividing some of the variables only
 
@@ -167,7 +167,7 @@ subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
 This is worth it when the objective is close to unimodal in the variables left
 out: one of them keeps all of its basins inside every box, and the local solve
 returns the one it starts in. See
-[the benchmark](benchmark.md#refining-some-variables-only-and-when-it-pays),
+[the benchmark](tuning.md#refining-some-variables-only-and-when-it-pays),
 where it solves a problem that subdividing every variable coarsely does not, and
 loses on the problems that are multimodal in every variable.
 

@@ -9,322 +9,43 @@
 
 # Benchmark results
 
-## Protocol
-
-Rastrigin in two dimensions over $[-4.1, 5.9]^2$, whose local minima are about
-one unit apart, subdivided into $10 \times 10 = 100$ boxes. The bounds are
-deliberately asymmetric so that the global minimizer, the origin with $f = 0$, is
-neither at the center of a box nor on its border.
-
-The reference is the **enumeration of the boxes**: solving the sub-problem of
-every box. It is exhaustive, embarrassingly parallel and needs no cuts, so the
-outer approximation is only worth its complexity if it reaches the same optimum
-after substantially fewer sub-problems.
-
-Both are drivers of the *same* main problem, through the same `Benders`
-formulation and the same design space, so the comparison isolates the
-exploration strategy. The budget is counted in **executions of the objective
-discipline**, the quantity that is expensive in an industrial problem.
+What the method achieves, against the exhaustive enumeration of the boxes and
+against the three baselines of the problem class. The problems are described in
+[one appendix](problems.md) and the baselines in [the other](baselines.md); how
+the settings were arrived at is [a page of its own](tuning.md).
 
 Reproduce with `tox -e benchmark`.
 
-## Cost, and the two formulations
+## Against the enumeration of the boxes
 
-Both formulations run the same master, in the `adaptive` configuration described
-below; nothing here is tuned per formulation.
+The reference is the **enumeration**: solving the sub-problem of every box. It is
+exhaustive, embarrassingly parallel and needs no cuts, so the outer approximation
+is only worth its complexity if it reaches the same optimum after substantially
+fewer sub-problems. Both drive the same main problem through the same `Benders`
+formulation, so the comparison isolates the exploration strategy.
 
-| Formulation | Method | Objective | Boxes solved | Executions |
+Rastrigin in two dimensions, $10 \times 10 = 100$ boxes, eight starting points,
+counted in **executions of the objective discipline**:
+
+| formulation | method | objective | boxes solved | executions |
 |-------------|--------|-----------|--------------|------------|
 | constraint | enumeration | $0.0$ | 100 | 1427 |
 | constraint | outer approximation | $0.0$ | 24 to 28 | 346 to 404 |
 | normalized | enumeration | $0.0$ | 100 | 1267 |
 | normalized | outer approximation | $0.0$ | 20 to 36 | 254 to 470 |
 
-About **four times cheaper for the same optimum**.
+About **four times cheaper for the same optimum**. The normalized formulation
+reaches it from all eight starting points and the constraint one from seven, and
+it also enumerates for about 11% less, its sub-problems being bounded by their
+box instead of having to restore the feasibility of a box constraint. It is
+therefore the one to prefer, by a small margin.
 
-Over eight starting points, the normalized formulation reaches the global optimum
-**8 out of 8** times and the constraint one **7 out of 8**, so the normalized one
-is retained, as it was on the earlier measurement, but by a much smaller margin
-than that measurement suggested.
-
-The normalized formulation also solves its boxes for about 11% less when
-enumerating, since its sub-problems are bounded by their box and start inside it,
-instead of having to restore the feasibility of a box constraint.
-
-:::{note}
-An earlier version of this page reported 96% against 58% for the two
-formulations, with a convexification constant tuned separately for each. Once the
-two mechanisms of the master are separated and only one is used, both
-formulations do better and the difference between them is small. What that
-earlier measurement mostly compared was the tuning.
-:::
-
-## The master has two mechanisms, and they must not be combined
-
-Outer-approximation cuts are supporting hyperplanes only if the value function is
-convex. On a multimodal problem it is not, and the master offers **two distinct
-mechanisms** for keeping its cuts usable. They rest on different arguments, and
-measuring them together measures neither.
-
-`pure_convexification`
-: adds to the objective a convex term vanishing at the integer points. Once its
-  constant dominates the concavity of the relaxed problem, the relaxation is
-  convex and the outer approximation converges. Driven by
-  `convexification_constant`, with `adapt` off.
-
-`adaptive`
-: repairs the slope of each cut by least squares against the pairs of points
-  already observed, so that no cut over-predicts a value that has been measured.
-  Driven by `adapt` and the convexity margin `min_dfk`, with no convexification
-  constant.
-
-:::{warning}
-An earlier version of this page reported a single sweep with **both** mechanisms
-active, and concluded that the convexification constant was decisive and not
-transferable between formulations. That measurement was confounded and its
-conclusion is withdrawn. The two are swept apart below.
-:::
-
-### The adaptive repair, which reaches the optimum most often
-
-Rastrigin in two dimensions, eight starting points, no convexification constant:
-
-| parallel points | `min_dfk` = 1 | 10 | **30** | **100** | 300 |
-|-----------------|---------------|----|--------|---------|-----|
-| 1 | 0/8 | 0/8 | — | — | — |
-| **4** | 1/8 | 3/8 | **8/8** (26 boxes) | **8/8** (24 boxes) | 7/8 |
-| 8 | 0/8 | 1/8 | 8/8 (26) | 8/8 (52) | 8/8 (56) |
-
-Two settings are essential rather than an optimization.
-
-**Several parallel points.** The master probes one trust-region radius per point,
-over `geomspace(step / 2, step)`, so that a feasible master problem stays
-available. With a single point the run stops after two or three boxes whatever
-the margin.
-
-**A margin on the scale of the objective.** `min_dfk` is subtracted from an
-objective difference, so it is an absolute quantity in the units of the
-objective, not a ratio. The objective spans about eighty here, and a margin of
-thirty to a hundred reaches the optimum every time, a margin of ten three times
-out of eight, a margin of one never.
-
-### The pure convexification, and the range where it is worth using
-
-The constant has to dominate the non-convexity of the relaxed problem, and no
-more: past that, every unexplored box outranks the incumbent whatever the cuts
-say, the master ranks them by nothing in particular, and the method degenerates
-towards the enumeration it exists to avoid. Since the enumeration of these $100$
-boxes is available for free and is embarrassingly parallel, a configuration is
-only worth its complexity while it stays well under it, which is the last two
-columns below.
-
-Same problem and starting points, `adapt` off, one parallel point, trust region
-sized to the design space:
-
-| constant | reached | worst | boxes | of the enumeration | evaluations | of the enumeration |
-|----------|---------|-------|-------|--------------------|-------------|--------------------|
-| $10$ | 0/8 | $17.91$ | 2 | 2% | 32 | 3% |
-| $20$ | 5/8 | $3.98$ | 14 | 14% | 182 | 14% |
-| $30$ | 7/8 | $1.99$ | 26 | 26% | 334 | 26% |
-| $50$ | **8/8** | $0.00$ | 22 | 22% | 288 | 23% |
-| $75$ | 7/8 | $0.99$ | 22 | 22% | 281 | 22% |
-| $100$ | **8/8** | $0.00$ | 20 | 20% | 254 | 20% |
-| $150$ | 6/8 | $0.99$ | 22 | 22% | 283 | 22% |
-| $200$ | 5/8 | $1.99$ | 18 | 18% | 239 | 19% |
-| $300$ | 6/8 | $0.99$ | 20 | 20% | 258 | 20% |
-
-The useful window is **fifty to a hundred**, where the optimum is reached from
-every starting point for about a fifth of the enumeration. It is no accident that
-this is the order of magnitude of the variation of the objective over the design
-space, about eighty here, which is also the order of the convexity margin the
-adaptive repair needs: both mechanisms are calibrated against the same quantity,
-the non-convexity they have to dominate, and neither is dimensionless.
-
-Past that window the result decays, $6/8$ then $5/8$, and it keeps decaying at the
-values tried before writing this, $4/8$ at $10^4$ and $3/8$ at $10^5$. What does
-*not* happen is the cost growing with the constant: it stays near a fifth of the
-enumeration throughout, because the run ends on the two caps described next
-rather than on its optimality test. An exaggerated constant therefore buys
-nothing and costs the same; it is not a safe default to be conservative with.
-
-### The two caps that end a run
-
-Instrumenting the master problem shows why the constant cannot be pushed to the
-regime where its guarantee would apply.
-
-**The constant destroys the lower bound.** The optimum $\eta$ of the master comes
-back at $-996$ for a constant of $1000$, and at $-9991$ for $10^4$: that is
-$\eta \approx -\kappa$. The convexification tilts every cut by
-$\pm\kappa / n_{\text{comp}}$ per component, and the relaxed master exploits that
-tilt. The gap $\mathrm{ub} - \mathrm{lb} \approx \mathrm{ub} + \kappa$ therefore
-never closes, and the convergence test on `ub_tol` can never fire. The guarantee
-is not wrong; it is unreachable, the algorithm never obtaining the certificate
-that would let it stop on optimality.
-
-**So the run ends on a heuristic cap instead.** Either the trust region shrinks
-until the master is infeasible, described in the next section, or, when the trust
-region is inactive, the stall counter fires:
-
-```text
-MILP : Stalling iterations: 10/10.
-The Upper bound stopped changing for 10 iterations.
-```
-
-`upper_bound_stall` defaults to ten: the master gives up after ten iterations
-that do not improve the incumbent, whatever its lower bound says. With one box
-solved per iteration, that alone caps a run near twenty boxes out of a hundred,
-which is exactly where the table above saturates.
-
-That is the whole answer to why raising the constant stops buying exploration:
-the run can only end on one of these caps, never on the optimality test, so the
-exploration is set by the caps and the constant only decides how well the cuts
-rank the boxes visited before they fire. Lifting the caps to recover the
-guarantee would cost the sub-problems the outer approximation exists to save,
-which is the same trade as enumerating.
-
-Two implementation changes would follow, and neither is made here: restoring the
-step towards `max_step` and retrying before giving up on an infeasible master,
-and reporting the bound net of the convexification term, which vanishes at the
-integer points and so leaves the gap meaningful.
-
-## The trust region is a compromise, and its default is not the design space
-
-The master does not consider every box at each iteration: it restricts the MILP
-to a neighbourhood of the incumbent, whose radius `max_step` shrinks when the
-upper bound stops improving. Without that restriction the master is the textbook
-outer approximation, which explores until its lower bound rises above the
-incumbent; with it, the run is cheaper and stops earlier. Which is the better
-trade depends on the problem, so the radius is worth setting deliberately.
-
-Two things make the default wrong for a box subdivision.
-
-**The distance is not the number of boxes apart.** The trust region is the linear
-constraint
-
-$$
-\sum_{j \,:\, \alpha'_j = \alpha_j} w_j(\alpha) \ \ge\ \sum_j w_j(\alpha) - \texttt{max\_step},
-$$
-
-so the cost of moving from the incumbent $\alpha$ to a candidate $\alpha'$ is the
-sum of the **weights the incumbent selects** over the components the candidate
-changes. The design spaces built here leave the catalogue weights at their
-default, which `CatalogueDesignSpace` sets to the catalogue itself, and the
-catalogue of a subdivided variable is the range of its subdivision indexes:
-
-```text
-x_box weights = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-```
-
-Leaving the first subdivision of a component is therefore free and leaving the
-last one costs $m_j - 1$, whatever the candidate. The distance is neither the
-number of components changed nor how far they move.
-
-**The default radius is smaller than the design space.** The largest distance is
-$\sum_j (m_j - 1)$, which is $18$ for the two variables and ten subdivisions of
-this benchmark, against the master's default `max_step` of $10$. The trust region
-is then active from the first iteration, and once it shrinks, an incumbent whose
-indexes are high cannot change any component at all: the master can only
-re-propose the incumbent, which has been eliminated, so the MILP becomes
-infeasible and the run stops. Instrumenting the last iteration of a run stopping
-at $14$ boxes shows exactly that: dropping either the elimination constraints or
-the trust region alone restores feasibility, neither alone is the cause.
-
-{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
-returns that largest distance, to be passed to the master.
-
-Sweeping the constant of the pure convexification at both radii, over eight
-starting points:
-
-| `max_step` | $\kappa = 10$ | $50$ | $100$ | $1000$ |
-|------------|---------------|------|-------|--------|
-| $10$, the master default | 0/8 | 5/8 | 6/8 | — |
-| $18$, the design space | 0/8 | **8/8** | **8/8** | 7/8 |
-
-At its best constant, the pure convexification reaches the optimum from every
-starting point once the trust region is sized to the design space. Per starting
-point, the two runs that fail at $10$ both succeed at $18$, and every run solves
-a few more boxes:
-
-```text
-start box      max_step 10          max_step 18
-   [1, 4]   0.9950 (14 boxes)   0.0000 (20 boxes)
-   [3, 5]   0.9950 (16 boxes)   0.0000 (20 boxes)
-```
-
-For the adaptive repair, which already reaches 8/8, the larger radius only costs:
-$47$ boxes and $606$ evaluations instead of $24$ and $308$, for the same optimum.
-Measured over the whole comparison of the formulations, it is the same story,
-the same reliability for up to twice the worst-case cost: the normalized
-formulation goes from $20$–$36$ boxes to $24$–$56$, still 8/8, and the constraint
-one from $24$–$28$ to $20$–$64$, still 7/8.
-So the radius buys exploration and is paid for in evaluations, which is what a
-trust region is for; the default configuration keeps the master's own value, and
-a problem on which the run stops early is a reason to raise it to
-`subdivision.max_step`.
-
-Deactivating the shrink instead, by setting `step_decreasing_activation` above
-the number of iterations, does not help: the run then ends on the stall counter
-described above, at 6/8 for $\kappa = 100$, with the same numbers under the index
-weights and under unit weights, which is the signature of a trust region inactive
-in both. The two caps replace each other, which is why neither the constant nor
-the radius alone recovers the guarantee.
-
-## Comparison with the baselines of the problem class
-
-Enumerating the boxes measures the exploration, but it is not what a practitioner
-would otherwise use. The baselines that actually address a multimodal non-linear
-program driven by a local solver are:
-
-**multistart** of that local solver
-: the reference of the class, and the ancestor of the frameworks that combine a
-  global sampling with local solves.
-
-**CMA-ES**
-: an evolution strategy, which uses no gradient.
-
-**DIRECT**
-: a deterministic partitioning method, which uses no gradient either.
-
-:::{note}
-Relaxation-based global solvers, BARON, SCIP, Couenne or Alpine, are
-deliberately absent. They build convex relaxations from the **algebraic form** of
-the problem, which the sub-problem of an industrial case does not have: it is a
-disciplinary optimization or a multidisciplinary analysis. They are the right
-comparison for a polynomial program, and no comparison at all for this one.
-:::
-
-### Counting a budget across methods that differ that much
-
-A method using the gradient cannot be compared with one that does not on the
-number of objective evaluations alone: the gradient is information, and it is not
-free. The budget is therefore counted in **equivalent** evaluations, under the
-two conventions that bracket the truth:
-
-| convention | a gradient costs | the case it represents |
-|------------|------------------|------------------------|
-| adjoint | $1$ evaluation | an adjoint is available, which is what the method targets |
-| finite differences | $n$ evaluations | the objective is a black box |
-
-CMA-ES and DIRECT are unaffected by the convention, so reporting both brackets
-the comparison instead of picking the flattering one. Every method is stopped as
-soon as its budget is spent, so the comparison is at equal cost rather than at
-equal number of iterations, which would mean nothing here.
-
-Two pitfalls the harness guards against, both found the hard way:
-
-- a method whose settings are rejected returns an infinite objective after **no
-  evaluation at all**, and so appears to lose fairly. A test now asserts that
-  every method evaluates something and returns a finite value;
-- DIRECT calls its objective from a C extension, where raising an exception to
-  stop on the budget yields a `SystemError`. The methods that bound their own
-  number of evaluations exactly are left to do so.
-
-### Results
+## Against the baselines
 
 Four problems, two dimensions, three starting points, a budget of $500$
-equivalent evaluations per design variable. Each cell is the **median distance to
-the optimum**, the **median cost** under the adjoint convention, and the number
-of starting points from which the optimum was **reached**.
+equivalent evaluations per design variable under the adjoint convention. Each
+cell is the **median distance to the optimum**, the **median cost**, and the
+number of starting points from which the optimum was **reached**.
 
 | problem | $n$ | box subdivision | multistart | CMA-ES | DIRECT |
 |---------|-----|-----------------|------------|--------|--------|
@@ -337,284 +58,116 @@ of starting points from which the optimum was **reached**.
 | Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
 | Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
 
-The method runs with the trust region sized to the design space and the number of
-subdivisions of the default, which keeps the boxes in the hundreds: ten per
-variable in two dimensions and two in five. Both choices matter, and the second
-one leaves a result on the table, as the section on the density shows: at ten
-subdivisions per variable in five dimensions, Rastrigin is solved, which nothing
-in this table does.
+```{image} ../_static/figures/results.svg
+:class: only-light
+:alt: Cost of each method on each problem, with the optima reached
+```
 
-Sizing the radius is what the pure convexification needs, and on this comparison,
-which uses the adaptive repair, it is close to neutral:
-
-| problem | $n$ | master radius of $10$ | radius sized to the space |
-|---------|-----|-----------------------|---------------------------|
-| Rastrigin | 2 | $0.00$ · 519 · 3/3 | $0.00$ · 786 · 3/3 |
-| Ackley | 2 | $0.00$ · 708 · 3/3 | $0.00$ · 422 · 2/3 |
-| Styblinski-Tang | 2 | $0.00$ · 218 · 3/3 | $0.00$ · 240 · 3/3 |
-| Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 |
-| Rastrigin | 5 | $4.98$ · 899 · 0/3 | $4.98$ · 899 · 0/3 |
-| Ackley | 5 | $9.71$ · 1429 · 0/3 | $9.71$ · 1388 · 0/3 |
-| Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 466 · 3/3 |
-| Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.06$ · 1644 · 0/3 |
-
-Rastrigin in two dimensions costs half as much again for the same optimum, Ackley
-in two dimensions gets cheaper but loses a starting point, and the rest is
-unchanged. The five-variable rows cannot move at this density: with two
-subdivisions per variable the diameter of the design space is $5$, *smaller* than
-the master's default radius of ten, so sizing tightens the region rather than
-widening it. It only widens where the subdivision is fine, and there it decides
-the outcome, hence sizing it everywhere.
-
-:::{warning}
-**These numbers are measurements, not a claim of generalization.** The convexity
-margin was set on Rastrigin in two dimensions and then applied to every problem,
-although it is an absolute quantity in the units of the objective: it is far too
-large for Griewank, whose objective spans about two, and probably too small for
-Styblinski-Tang in five dimensions, whose objective spans hundreds. The default
-number of subdivisions was likewise read off the sweep below, on these very
-problems. Tuning on the problems one then reports is circular. A claim about the
-method needs a held-out set of problems, a protocol fixed in advance, and a
-margin scaled to each problem.
-:::
-
-Read with that caveat, the table says three things.
+```{image} ../_static/figures/results-dark.svg
+:class: only-dark
+:alt: Cost of each method on each problem, with the optima reached
+```
 
 **Where it works, it is the cheapest.** Styblinski-Tang in five dimensions is
 solved from every starting point for $466$ evaluations, against $2340$ for
-multistart, $1457$ for CMA-ES and $2505$ for DIRECT. Same answer, three to five
-times cheaper. In two dimensions it reaches the optimum from every starting point
-on Rastrigin and Styblinski-Tang, and from two out of three on Ackley.
+multistart, $1457$ for CMA-ES and $2505$ for DIRECT: the same answer, three to
+five times cheaper.
 
-**It is not the most reliable in five dimensions.** On Ackley it matches
-multistart and is beaten by CMA-ES, which reaches the optimum every time; on
-Griewank, DIRECT is closer. On Rastrigin the row above hides the result: at this
-density no method solves it, and the method does, at a density this table does
-not use.
+**It is not the most reliable.** On Ackley in five dimensions CMA-ES reaches the
+optimum every time and the method does not; on Griewank, DIRECT is closer. And
+DIRECT is a serious baseline at low dimension, cheap and reliable, so any claim
+for the method has to be made against it rather than against multistart alone.
 
-**DIRECT is a serious baseline at low dimension**, cheap and reliable, and any
-claim for the method has to be made against it rather than against multistart
-alone.
+**The table understates the five-variable rows**, which use the default
+subdivision of two per variable. At ten per variable Rastrigin is solved, as the
+next section shows, and nothing else in this table does that.
 
-## The subdivision has to resolve the basins, and it can afford to
+:::{warning}
+**These numbers are measurements, not a claim of generalization.** The convexity
+margin and the number of subdivisions were tuned on these very problems, and the
+margin is an absolute quantity in the units of the objective, so it does not even
+transfer between them unchanged. A claim about the method needs a held-out set of
+problems and a protocol fixed in advance.
+:::
+
+## The density of the subdivision decides
 
 The number of boxes is the Cartesian product of the subdivisions, so it explodes
 with the dimension, but the master does not see it: it sees the **one-hot
 binaries**, $\sum_j m_j$, which grow linearly. Five variables with ten
 subdivisions each is $100\,000$ boxes and only $50$ binaries.
 
-That is decisive, and it corrects an earlier version of this page. What that
-version measured was a master whose trust region was left at its default radius
-of ten, against a design space whose diameter is $n(m-1) = 45$ at that density:
-the master could change one or two variables at a time out of five. Sized to the
-diameter, the same runs behave differently.
+Five variables, the `adaptive` configuration, the trust region sized to the
+design space:
 
-Five variables, ten subdivisions each, the `adaptive` configuration with the
-radius sized:
+| problem | $m = 2$ (32 boxes) | $m = 10$ ($10^5$ boxes) |
+|---------|--------------------|-------------------------|
+| Rastrigin | $4.98$ · 899 · 0/3 | **$0.00$ · 3357 · 2/3** |
+| Ackley | $9.71$ · 1429 · 0/3 | $7.08$ · 4665 · 0/3 |
+| Styblinski-Tang | **$0.00$ · 466 · 3/3** | $0.00$ · 905 · 1/3 |
+| Griewank | **$0.06$ · 1644 · 0/3** | $0.11$ · 4964 · 0/3 |
 
-| problem | budget $2500$ | budget $5000$ | for comparison, $m = 2$ (32 boxes) |
-|---------|---------------|---------------|------------------------------------|
-| Rastrigin | $1.00$ · 2500 · 1/3 | **$0.00$ · 3357 · 2/3** | $4.98$ · 899 · 0/3 |
-| Ackley | $9.14$ · 2500 · 0/3 | $7.08$ · 4665 · 0/3 | $9.71$ · 1429 · 0/3 |
-| Styblinski-Tang | $0.00$ · 905 · 1/3 | $0.00$ · 905 · 1/3 | $0.00$ · 466 · 3/3 |
-| Griewank | $0.23$ · 2500 · 0/3 | $0.11$ · 4964 · 0/3 | $0.06$ · 1644 · 0/3 |
-
-**Rastrigin in five dimensions is solved**, from two starting points out of three,
-for about $3400$ evaluations. No baseline does that: at $2500$ evaluations
-multistart returns $3.98$, CMA-ES $8.96$ and DIRECT $4.98$, and at $2500$ the
-method already returns $1.00$. The earlier statement that Rastrigin's $10^n$
-basins are out of reach of any tractable subdivision was wrong: $m = 10$ resolves
-them, $50$ binaries is a small master, and only the radius stood in the way.
-
-It is not a free choice, though. Ackley improves, $9.71$ to $7.08$, for three
-times the cost and still without reaching the optimum. Styblinski-Tang, whose
-basins $m = 2$ already resolves, keeps the optimum in the median but reaches it
-from one starting point out of three instead of three, for twice the price.
-Griewank gets worse. So the rule is the one the section title states: the
-subdivision has to **resolve the basins**, and refining beyond that spends
-sub-problems on boxes that were already unimodal.
-
-What does scale is the master. The cost of a run is the number of boxes it
-solves, and the budget buys about $30$ to $60$ of them whatever the subdivision,
-so what a fine subdivision demands is not more boxes but a cut model with $n
-\times m$ coefficients identified from that handful of cuts. That is why the
-five-variable runs need a few thousand evaluations where the two-variable ones
-need a few hundred.
-
-:::{note}
-An earlier version of this page reported this density as a failure, Rastrigin at
-$m = 10$ returning $15.92$ and Styblinski-Tang $35.07$, and concluded that the
-method scales with the number of basins rather than with the number of variables.
-The first half of that conclusion survives; the measurement does not, having been
-made with a trust region four times smaller than the design space.
-:::
-
-## At five variables, which knob to turn
-
-The two-dimensional benchmark is where the mechanisms were tuned, and what works
-there does not carry over unchanged. Two questions are open at five variables:
-which of the two mechanisms to use, and whether to subdivide every variable
-coarsely or a few of them finely.
-
-### The constant is the better buy at the coarse subdivision
-
-Two subdivisions per variable, equal budget, three starting points:
-
-| problem | adaptive | pure convexification |
-|---------|----------|----------------------|
-| Rastrigin | $4.98$ · 899 · 0/3 | $4.98$ · **606** · 0/3 |
-| Ackley | $9.71$ · 1429 · 0/3 | $14.43$ · 598 · 0/3 |
-| Styblinski-Tang | $0.00$ · 466 · 3/3 | $0.00$ · **458** · 3/3 |
-| Griewank | $0.06$ · 1644 · 0/3 | $0.06$ · **1277** · 0/3 |
-
-Same answer on three problems out of four for a quarter to a third less, the
-exception being Ackley. Sweeping each mechanism's constant per problem, at that
-same subdivision:
-
-| problem | constant | $1$ | $10$ | $100$ | $1000$ |
-|---------|----------|-----|------|-------|--------|
-| Rastrigin | convexification | $28.85$ | $8.57$ | **$4.98$** | $8.57$ |
-| Rastrigin | margin | $8.57$ | $8.57$ | **$4.98$** | $4.98$ |
-| Ackley | convexification | $14.43$ | $14.43$ | $14.43$ | $14.43$ |
-| Ackley | margin | $14.43$ | $14.43$ | **$9.71$** | $9.71$ |
-| Styblinski-Tang | convexification | $28.27$ | $28.27$ | **$0.00$** | $0.00$ |
-| Styblinski-Tang | margin | $0.00$ | **$0.00$ (230)** | $0.00$ | $0.00$ |
-| Griewank | convexification | $0.08$ | $0.06$ | $0.06$ | $0.06$ |
-| Griewank | margin | **$0.06$ (422)** | $0.06$ | $0.06$ | $0.06$ |
-
-The constant is **not** to be scaled down with the range of the objective as
-simply as the two-dimensional case suggested: Griewank spans about two and is
-served as well by any value, while Styblinski-Tang spans hundreds and the
-convexification needs a hundred exactly. Where a smaller constant suffices it is
-also cheaper, Styblinski-Tang being solved for $230$ evaluations at a margin of
-ten instead of $466$ at a hundred, so the constant is worth sweeping downwards
-once a configuration works. And Ackley is insensitive to every value of either
-mechanism, which says the master is not what fails there.
-
-### At the fine subdivision, the margin goes up, not down
-
-Ten subdivisions per variable, the radius sized to the diameter of the design
-space, $45$, a budget of $5000$:
-
-| problem | mechanism | $1$ | $10$ | $30$ | $100$ |
-|---------|-----------|-----|------|------|-------|
-| Rastrigin | margin | $17.91$ | $6.11$ | **$0.00$, 2/3 (2895)** | **$0.00$, 2/3 (3357)** |
-| Rastrigin | convexification | $33.41$ | $33.41$ | $33.41$ | **$6.97$** |
-| Ackley | margin | $8.12$ | $8.12$ | $8.12$ | **$7.08$** |
-| Ackley | convexification | $19.42$ | $19.42$ | $18.58$ | **$16.52$**, 1/3 |
-
-Finer boxes differ from each other by less, so a constant tuned on the coarse
-subdivision might be expected to swamp their ranking. Measured with the radius
-left at the master's default, that is what it looks like: a margin of ten then
-beats a margin of a hundred at this density, $3.98$ against $15.92$. With the
-radius sized, the ordering reverses and the large margin wins outright. The
-apparent need for a smaller constant was the master being unable to move more
-than a variable or two at a time, and a smaller margin making that confinement
-less harmful.
-
-One case does behave the other way, and it is the pure convexification rather
-than the adaptive repair: Styblinski-Tang at ten subdivisions per variable, with
-the radius already sized, is solved by a constant of **one** for $212$
-evaluations, the cheapest configuration measured on any five-variable problem
-here, and ruined by ten or a hundred, $46.82$ and $28.27$, while the same problem
-at four subdivisions per variable needs a hundred. So the constant of the
-convexification does depend on the size of the boxes; it is not a rule that
-transfers from one problem to another.
-
-### Refining some variables only, and when it pays
-
-The number of boxes is the Cartesian product of the subdivisions, so subdividing
-only the variables that need it keeps the master small, the others staying
-ordinary variables of the sub-problem. The package does this already:
-
-```python
-subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+```{image} ../_static/figures/density.svg
+:class: only-light
+:alt: What the density of the subdivision does at five variables
 ```
 
-On the benchmark problems, which are multimodal in **every** variable, it loses:
+```{image} ../_static/figures/density-dark.svg
+:class: only-dark
+:alt: What the density of the subdivision does at five variables
+```
 
-| problem | 5 split, $m=2$ (32 boxes) | 3 split, $m=4$ (64) | 2 split, $m=10$ (100) | 1 split, $m=10$ (10) |
-|---------|---------------------------|---------------------|-----------------------|----------------------|
-| Rastrigin | **$4.98$** | $9.95$ | $9.95$ | $18.90$ |
-| Ackley | $9.71$ | $13.64$ | **$9.53$** | $16.07$ |
-| Styblinski-Tang | **$0.00$, 3/3** | $14.14$, 1/3 | $28.27$ | $28.27$ |
+**Rastrigin in five dimensions is solved**, from two starting points out of
+three, for about $3400$ evaluations, which no baseline achieves at any budget
+tried here. Ackley improves for three times the cost. Styblinski-Tang and
+Griewank, whose basins two subdivisions per variable already separate, only get
+more expensive.
 
-The reason is the one already established: a variable left unsubdivided keeps all
-of its basins inside every box, and the local solve returns the one it starts in.
-Styblinski-Tang has two basins per variable, so leaving three of the five out
-leaves eight basins in every box, and the run that solved every starting point
-with thirty-two boxes now solves none with a hundred.
+So the subdivision has to **resolve the basins** of the landscape, and it can
+afford to; refining past them spends sub-problems on boxes that were already
+unimodal. Two settings decide whether that is reachable, the radius of the trust
+region and the convexity margin, both on [the tuning page](tuning.md).
 
-On an objective whose multimodality is concentrated, `partly_multimodal`, which is
-Rastrigin in two variables plus a paraboloid in the other three, it wins clearly:
-
-| subdivision | boxes | gap | cost | reached |
-|-------------|-------|-----|------|---------|
-| 5 split, $m=2$ | 32 | $1.99$ | 708 | 0/3 |
-| 3 split, $m=4$ | 64 | **$0.00$** | 1165 | **3/3** |
-| 2 split, $m=10$ | 100 | **$0.00$** | 1329 | **3/3** |
-| 2 split, $m=5$ | 25 | $1.99$ | 950 | 0/3 |
-| 2 split, $m=3$ | 9 | $1.99$ | 381 | 0/3 |
-
-Subdividing every variable coarsely fails from every starting point; subdividing
-the two multimodal ones finely succeeds from every one. And the requirement is
-the same as everywhere else, the subdivision resolving the basins: Rastrigin's
-minima are a unit apart over a range of ten, so $m=10$ works on those two
-variables and $m=5$ or $m=3$ does not, at a third of the cost and none of the
-result.
-
-So the rule is not about the number of variables but about **where the
-multimodality is**: subdivide the variables the objective is multimodal in, as
-finely as their basins require, and leave the others to the sub-problem. What the
-method still cannot do is find out by itself which ones those are.
+:::{note}
+An earlier version of this page reported this density as a failure and concluded
+that densely multimodal landscapes were out of reach. That measurement was made
+with the trust region of the master four times smaller than the design space,
+which is its default and is unrelated to the problem.
+:::
 
 ## What this does and does not establish
 
 Established:
 
 - against the exhaustive enumeration of the boxes, the outer approximation
-  reaches the same optimum solving about a fifth of them, at about a fifth of the
-  cost;
+  reaches the same optimum solving about a quarter of them, at about a quarter of
+  the cost;
 - the sub-problem starting point and the guard against non-convexity are both
   decisive, and both fail silently when wrong;
-- the adaptive repair, with a convexity margin scaled to the objective and
-  several boxes solved per master iteration, reaches the optimum from every
-  starting point, for about a quarter of the enumeration;
-- so does the fixed convexification constant, in a window of about fifty to a
-  hundred and with the trust region sized to the design space, for about a fifth
-  of the enumeration; outside that window it decays, and both constants are of
-  the order of the variation of the objective, not dimensionless;
-- the two formulations behave alike under the same master settings, the
-  normalized one being slightly ahead and cheaper to assemble;
 - where the subdivision resolves the basins, the method reaches the optimum for
   three to five times fewer evaluations than multistart, CMA-ES or DIRECT;
 - a subdivision fine enough to resolve them stays tractable, the master growing
   with the binaries and not with the boxes: Rastrigin in five dimensions, out of
-  reach of every baseline here, is solved over $100\,000$ boxes once the trust
-  region is sized to the design space;
-- where the subdivision does not resolve the basins, the method is the worst of
-  the four, and no setting of either mechanism recovers it;
+  reach of every baseline here, is solved over $100\,000$ boxes;
 - subdividing only the variables the objective is multimodal in solves a problem
   that subdividing every variable coarsely does not, and loses when the
   multimodality is spread over all of them;
 - the radius of the trust region has to start at the diameter of the design
-  space, $\sum_j (m_j - 1)$, the master's default of ten being unrelated to it;
-- the number of boxes costs evaluations but does not, by itself, defeat the
-  master: with the adaptive repair, Styblinski-Tang in five dimensions is solved
-  from every starting point over $32$ boxes as well as over $100\,000$.
+  space, $\sum_j (m_j - 1)$, the master's default of ten being unrelated to it.
 
 Not established:
 
-- **generalization.** The convexity margin and the number of subdivisions were
-  tuned on the problems then reported, and the margin is in the units of the
-  objective, so it does not even transfer between them unchanged. A claim about
-  the method needs a held-out set or a protocol fixed in advance.
+- **generalization.** The constants and the number of subdivisions were tuned on
+  the problems then reported. A claim about the method needs a held-out set or a
+  protocol fixed in advance.
 - **a rule for the number of subdivisions.** It has to follow the spacing of the
-  basins rather than the dimension, and that spacing is not known a priori. Estimating it, from the curvature or from
-  a first sampling, is the most valuable next step.
+  basins rather than the dimension, and that spacing is not known a priori.
+  Estimating it, from the curvature or from a first sampling, is the most
+  valuable next step, and the same estimate would say which variables to
+  subdivide at all.
 - **the convergence guarantee of the convexification.** A run ends on the trust
   region or on the stall counter, never on the optimality test, so the guarantee
-  is out of reach whatever the constant; and lifting both caps to recover it
+  is out of reach whatever the constant, and lifting both caps to recover it
   costs the sub-problems the method exists to save.
 - **behaviour with constraints.** Every problem here is bound-constrained only.
 - **the industrial case.** The method earns its complexity when a sub-problem

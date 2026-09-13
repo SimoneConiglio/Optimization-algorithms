@@ -42,12 +42,36 @@ Building a GEMSEO scenario with either formulation, and the settings that
 matter.
 :::
 
-:::{grid-item-card} Benchmark
+:::{grid-item-card} Benchmark results
 :link: benchmark
 :link-type: doc
 
-Measured against the exhaustive enumeration of the boxes, and the tuning of the
-convexification.
+Against the enumeration of the boxes and against multistart, CMA-ES and DIRECT,
+and what the density of the subdivision decides.
+:::
+
+:::{grid-item-card} Tuning the master
+:link: tuning
+:link-type: doc
+
+The two mechanisms keeping the cuts valid, the trust region, the caps that end a
+run, and how the settings depend on the size of the boxes.
+:::
+
+:::{grid-item-card} Appendix: the problems
+:link: problems
+:link-type: doc
+
+The five benchmark functions, their definitions, their bounds and what each one
+tests.
+:::
+
+:::{grid-item-card} Appendix: the baselines
+:link: baselines
+:link-type: doc
+
+Multistart, CMA-ES and DIRECT, how each is run, and how a budget is counted
+across methods that differ that much.
 :::
 
 ::::
@@ -59,4 +83,7 @@ methodology
 implementation
 usage
 benchmark
+tuning
+problems
+baselines
 ```

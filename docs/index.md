@@ -51,12 +51,12 @@ Building a GEMSEO scenario with either formulation, and the settings that
 matter.
 :::
 
-:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Benchmark
+:::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Benchmark results
 :link: algorithm/benchmark
 :link-type: doc
 
-Measured against the exhaustive enumeration of the boxes: five times cheaper
-for the same optimum.
+Four times cheaper than enumerating the boxes, and measured against multistart,
+CMA-ES and DIRECT.
 :::
 
 ::::

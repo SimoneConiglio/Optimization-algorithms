@@ -49,6 +49,11 @@ and this project adheres to
 
 ### Changed
 
+- The documentation is illustrated, `docs/figures.py` drawing every figure for
+  the light and the dark theme, and it is split so that the results are readable
+  on their own: the benchmark page reports what the method achieves, a page of
+  its own covers the tuning of the master, and two appendices describe and cite
+  the benchmark problems and the baselines.
 - The project is named `gemseo-box-subdivision`, since it is about the
   box-subdivision outer approximation rather than a collection of
   algorithms. The package is `gemseo_box_subdivision`.

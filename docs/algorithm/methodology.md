@@ -33,6 +33,16 @@ The regions come from a **Cartesian subdivision** of the design space: each
 component $x_j$ is split into $m_j$ contiguous subdivisions
 $[l_{j,k}, u_{j,k}]$. Their Cartesian product defines $\prod_j m_j$ boxes.
 
+```{image} ../_static/figures/subdivision.png
+:class: only-light
+:alt: A Cartesian subdivision of a two-dimensional design space
+```
+
+```{image} ../_static/figures/subdivision-dark.png
+:class: only-dark
+:alt: A Cartesian subdivision of a two-dimensional design space
+```
+
 Choosing a box is a categorical decision, solving inside it is a continuous one,
 so the problem becomes a **mixed-integer non-linear program**, which is exactly
 what a bi-level outer approximation solves.
@@ -73,6 +83,16 @@ This is the `Benders` formulation of
 [gemseo-bilevel-outer-approximation](https://gitlab.com/gemseo/dev/gemseo-bilevel-outer-approximation),
 with the box-selection variables as the categorical variables of the main
 problem.
+
+```{image} ../_static/figures/bilevel.svg
+:class: only-light
+:alt: The exchange between the master and the sub-problem
+```
+
+```{image} ../_static/figures/bilevel-dark.svg
+:class: only-dark
+:alt: The exchange between the master and the sub-problem
+```
 
 ## Outer approximation and its sensitivity
 
@@ -192,6 +212,16 @@ C(\alpha) = \frac{1}{n_{\text{comp}}}
 \sum_{j}\sum_{k} \alpha_{j,k}\left(\alpha_{j,k} - 1\right).
 $$
 
+```{image} ../_static/figures/convexification.svg
+:class: only-light
+:alt: The convexification term over a relaxed box choice
+```
+
+```{image} ../_static/figures/convexification-dark.svg
+:class: only-dark
+:alt: The convexification term over a relaxed box choice
+```
+
 Each term $\alpha(\alpha-1)$ is convex, equals $0$ at $\alpha \in \{0,1\}$ and
 reaches $-1/4$ at $\alpha = 1/2$. Two consequences:
 
@@ -248,7 +278,7 @@ non-convexity of $u$ over the relaxed polytope and the cuts are then valid by
 construction, which is the convergence argument; but it also lowers the master's
 lower bound by nearly $\kappa$, so the bound never meets the incumbent and the
 run ends on the trust region instead of on the tolerance, see
-[the benchmark](benchmark.md#the-two-caps-that-end-a-run).
+[the benchmark](tuning.md#the-two-caps-that-end-a-run).
 The adaptive repair keeps the bound usable and, on the benchmark, reaches the
 optimum from every starting point, but it enforces convexity only against the
 boxes already visited, so it carries no guarantee.
