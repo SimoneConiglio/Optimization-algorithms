@@ -385,52 +385,60 @@ median distance to the optimum and the number of runs reaching it:
 
 | method | Rastrigin | Ackley | Styblinski-Tang |
 |--------|-----------|--------|-----------------|
-| flat $m=2$ | $4.98$ | $9.71$ | **$0.00$, 6/6, 468** |
-| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6 |
-| 2 then 5, `value` | $4.98$ | $6.77$ | $0.00$, 6/6, 1303 |
-| 2 then 5, `cuts` | $2.99$ | $15.61$ | $0.00$, 6/6, 1540 |
-| 2 then 5, `mixed` | $4.98$ | $9.90$ | $0.00$, 6/6, 2290 |
-| deep, 4 levels of 2, `value` | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
-| deep, 4 levels of 2, `cuts` | $4.98$ | $14.76$ | $0.00$, 6/6, 1508 |
-| deep, 6 levels of 2, `value` | $4.98$ | $14.96$, 2/6 | $0.00$, 5/6 |
-| frontier, 10 expansions, optimistic | $6.70$ | $9.71$ | $0.00$, 6/6, 2500 |
-| frontier, 10 expansions, greedy | $10.15$ | $9.71$ | $0.00$, 6/6, 2500 |
-| frontier, 20 expansions, optimistic | $8.43$ | $9.71$ | $0.00$, 6/6, 2500 |
+| flat $m=2$ | $4.98$ | $14.43$ | $0.00$, 5/6, **486** |
+| flat $m=10$ | **$0.00$, 6/6, 1920** | $6.30$† | $0.00$, 1/6, 532 |
+| 2 then 5, `value` | $4.98$ | $6.30$ | $0.00$, 5/6, 872 |
+| 2 then 5, `cuts` | $2.45$ | $8.11$ | $0.00$, 5/6, 987 |
+| deep, 4 levels of 2, `value` | $4.98$ | **$0.00$, 4/6, 2387** | $0.00$, 5/6, 1494 |
+| frontier, 10 expansions, optimistic | $6.70$† | $9.71$† | $0.00$, **6/6**, 2500† |
+| frontier, 10 expansions, greedy | $25.87$† | $9.71$† | $0.00$, 6/6, 2500† |
+| frontier, 20 expansions, optimistic | $8.43$† | $9.71$† | $0.00$, 6/6, 2500† |
+
+† stopped by the budget rather than by its own criterion, so the gap is an upper
+bound. The frontier is truncated by construction, expanding boxes until the
+budget is spent.
 
 **One variant does something no other configuration in this documentation
 does.** The deep hierarchy, splitting every variable in two at each of four
-levels and refining the best box by its value, reaches the optimum of Ackley in
-five dimensions from **three starting points out of six**, where every flat
-subdivision and every two-level hierarchy reaches it from none. Its median is
-worse than the best two-level median, $7.88$ against $6.77$, because the outcome
-is bimodal: it either descends into the central basin and solves the problem, or
-commits to the wrong subdomain and stays there.
+levels and refining the best box by its value, **solves Ackley** in five
+dimensions from four starting points out of six, with a median gap of zero,
+where the flat subdivision at its best density reaches it from two even when
+given four times the budget. It also stops on its own criterion at $2387$
+evaluations rather than on the budget, which the flat run at $m=10$ does not.
 
-That bimodality is the whole story of the family. **A hierarchy cannot
-backtrack**: the box it refines at one level is the only space the next level
-sees, so an unreliable score compounds instead of averaging out. It follows that
+Everywhere else it loses. On Rastrigin it returns $4.98$ where the flat
+subdivision now solves the problem from every starting point, and on
+Styblinski-Tang it reaches the optimum as often as the flat coarse subdivision
+for three times the cost.
 
-- `cuts` helps where the observed values are noise, Rastrigin, $4.98$ to $2.99$,
-  and ruins the case where they are informative, Ackley, $6.77$ to $15.61$: an
-  optimistic model explores, and exploration is wrong when the ranking already
-  points at the right region;
-- `mixed` inherits the worse of the two rather than hedging, halving the budget
-  of each refinement, depth mattering more than coverage here;
-- deeper is not better in itself, six levels being worse than four, each level
-  being one more irreversible commitment;
+**A hierarchy cannot backtrack**: the box it refines at one level is the only
+space the next level sees, so an unreliable score compounds instead of averaging
+out. It follows that
+
+- `cuts` helps where the observed values are noise, Rastrigin, $4.98$ to $2.45$,
+  and hurts where they are informative, Ackley, $6.30$ to $8.11$: an optimistic
+  model explores, and exploration is wrong when the ranking already points at
+  the right region;
 - the frontier, which alone can return to a box it passed over, is the worst of
-  the family on Rastrigin, $6.70$ optimistic and $10.15$ greedy, and more
-  expansions make it worse, $8.43$ at twenty: backtracking does not pay for the
-  model it destroys, each node restarting a master with a handful of cuts.
+  the family on Rastrigin, $6.70$ optimistic and $25.87$ greedy, and more
+  expansions make it worse, $8.43$ at twenty. Backtracking does not pay for the
+  model it destroys: each node restarts a master with a handful of cuts, and
+  this shape creates the most nodes of the three.
 
-None of the three beats the flat fine subdivision on Rastrigin or the flat
-coarse one on Styblinski-Tang, so the hierarchy is not a default. What it is, is
-the only construction here that reaches Ackley at five variables, and the
-measured reason the others do not is a missing ingredient rather than a wrong
-idea: a **best-first frontier** over the boxes of every level, scored by the cut
-model that produced them, which would let a run return to a subdomain it passed
-over. That is a spatial branch-and-bound over the subdivision, and it subsumes
-the three rules above.
+The frontier result is worth stating plainly because it refutes the obvious next
+idea. A **best-first search over the boxes of every level**, scored by the cut
+model that produced them, is the spatial branch-and-bound these shapes gesture
+at, and it is the construction an earlier version of this page proposed as the
+missing ingredient. Measured, it is the worst of the family. What a hierarchy
+lacks is not the ability to reconsider; it is a model worth reconsidering with,
+and every node it adds makes that model thinner. The construction that keeps one
+model over every level is the
+[multi-resolution encoding](benchmark.md#the-extensions-and-what-they-are-worth),
+not a better search over separate ones.
+
+So the hierarchy is not a default. What it is, is the one construction here that
+solves Ackley at five variables, where the flat method does not reach the optimum
+from more than two starting points at any budget tried.
 
 :::{note}
 The two-level hierarchy was justified by the statistics of the cut model, and it
