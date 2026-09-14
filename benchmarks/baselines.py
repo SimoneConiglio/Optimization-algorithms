@@ -278,7 +278,10 @@ def run_box_subdivision(
     settings["max_step"] = TRUST_REGION_RADIUS
     settings.update(overrides)
 
-    with suppress(BudgetExceededError):
+    # A budget spent inside a linearization leaves the discipline without its
+    # output, which GEMSEO then reports as a missing key rather than as the
+    # budget error raised underneath it.
+    with suppress(BudgetExceededError, KeyError):
         scenario.execute(
             BiLevelMasterOuterApproximation_Settings(
                 max_iter=10000, ub_tol=1e-4, **settings
