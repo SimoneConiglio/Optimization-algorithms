@@ -156,11 +156,12 @@ def test_the_mechanisms_cannot_be_combined() -> None:
     """Whichever mechanism is chosen, the other constant must be switched off."""
     adaptive = BoxSubdivisionSettings().to_master_settings()
     assert adaptive["adapt"] is True
-    assert adaptive["convexification_constant"] == 0.0
+    assert adaptive["convexification_constant"] == pytest.approx(0.0)
+    assert adaptive["min_dfk"] > 0.0
 
     convex = BoxSubdivisionSettings(mechanism="convexification").to_master_settings()
     assert convex["adapt"] is False
-    assert convex["min_dfk"] == 0.0
+    assert convex["min_dfk"] == pytest.approx(0.0)
     assert convex["convexification_constant"] > 0.0
 
 
