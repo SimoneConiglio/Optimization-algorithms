@@ -34,6 +34,7 @@ from numpy import cos
 from numpy import e
 from numpy import exp
 from numpy import linspace
+from numpy import log
 from numpy import log1p
 from numpy import meshgrid
 from numpy import pi
@@ -472,6 +473,96 @@ def draw_hierarchy(foreground: str):
     return figure
 
 
+def draw_multiresolution(foreground: str):
+    """Draw the digits of the box index, and what the encoding saves."""
+    figure, axes_pair = plt.subplots(1, 2, figsize=(9.0, 3.6))
+
+    # Left: three levels of a base-2 subdivision of one variable. Each level
+    # halves the interval its predecessors selected, so the digits it selects
+    # are the base-2 representation of the box index.
+    axes = axes_pair[0]
+    digits = (1, 0, 1)
+    for level, digit in enumerate(digits):
+        count = 2 ** (level + 1)
+        width = 1.0 / count
+        # The cell selected is the value of the digits read so far, in base two.
+        selected = int("".join(str(d) for d in digits[: level + 1]), 2)
+        for index in range(count):
+            axes.add_patch(
+                plt.Rectangle(
+                    (index * width, -level - 0.35),
+                    width,
+                    0.7,
+                    facecolor=ACCENT if index == selected else "none",
+                    alpha=0.4 if index == selected else 1.0,
+                    edgecolor=foreground,
+                    linewidth=0.6,
+                )
+            )
+
+        axes.text(
+            -0.04,
+            -level,
+            f"level {level + 1},  $d_{level + 1}={digit}$",
+            ha="right",
+            va="center",
+            fontsize=8.5,
+            color=foreground,
+        )
+        axes.text(
+            (selected + 0.5) * width,
+            -level,
+            str(selected),
+            ha="center",
+            va="center",
+            fontsize=8,
+            color=foreground,
+        )
+
+    axes.set_xlim(-0.62, 1.03)
+    axes.set_ylim(-2.75, 0.75)
+    axes.axis("off")
+    axes.set_title(
+        "Each level halves what the one above selected:\n"
+        "the digits $(1,0,1)$ are box $5$ of $8$",
+        fontsize=9,
+    )
+
+    # Right: the binaries a resolution costs, flat against levels.
+    axes = axes_pair[1]
+    resolutions = array([4, 8, 16, 32, 64, 128])
+    dimension = 5
+    axes.plot(
+        resolutions,
+        dimension * resolutions,
+        marker="o",
+        color=SECOND,
+        label="flat, $n\\,m$",
+    )
+    for branching, style in ((2, "-"), (4, "--")):
+        levels = log(resolutions) / log(branching)
+        axes.plot(
+            resolutions,
+            dimension * branching * levels,
+            style,
+            marker="s",
+            color=ACCENT,
+            label=f"levels of $m={branching}$, $n\\,m\\,L$",
+        )
+
+    axes.set_xscale("log", base=2)
+    axes.set_yscale("log", base=2)
+    axes.set_xlabel("subdivisions per component reached")
+    axes.set_ylabel("binaries of the master")
+    axes.set_title(
+        "Five variables: the resolution grows as a power,\nthe binaries as a product",
+        fontsize=9,
+    )
+    axes.legend(fontsize=8)
+    figure.tight_layout()
+    return figure
+
+
 def draw_partial_refinement(foreground: str):
     """Draw a subdivision of some of the variables only."""
     figure, axes = plt.subplots(figsize=(5.0, 4.2))
@@ -886,6 +977,7 @@ FIGURES = {
     "trust_region": (draw_trust_region, "svg"),
     "complexity": (draw_complexity, "svg"),
     "hierarchy": (draw_hierarchy, "svg"),
+    "multiresolution": (draw_multiresolution, "svg"),
     "partial_refinement": (draw_partial_refinement, "png"),
     "problems": (draw_problems, "png"),
     "landscape_slice": (draw_landscape_slice, "svg"),

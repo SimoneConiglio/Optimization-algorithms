@@ -541,6 +541,88 @@ resolution reached is $2^4$ per variable without any level ever being large.
 The measured behaviour of the three shapes, and of the two scores, is in
 [the results](benchmark.md#the-extensions-and-what-they-are-worth).
 
+## One master, several levels: the multi-resolution encoding
+
+The hierarchies above put their levels in **different masters**, one after the
+other, and that is what they pay for. The same levels can be put in the **same**
+master instead, and the construction that does it is worth setting out on its
+own, because it removes the cost of a hierarchy without removing its resolution.
+
+### The encoding
+
+A box is chosen by **one categorical variable per level** rather than by one
+categorical variable over the whole subdivision. With $L$ levels of $m$
+subdivisions each, the lower bound of a component is the sum of the fractions of
+the design space its levels select:
+
+$$
+l_j(\alpha) = L_j + \Delta_j \sum_{k=1}^{L} m^{-k} \, d_k(\alpha_j),
+\qquad
+u_j(\alpha) = l_j(\alpha) + \Delta_j \, m^{-L},
+$$
+
+with $\Delta_j = U_j - L_j$ and $d_k \in \{0, \dots, m-1\}$ the subdivision the
+$k$-th level selects, one-hot encoded. This is the **base-$m$ representation of
+the box index**: the levels are its digits, the first level choosing the coarse
+region and each further level choosing a sub-region inside it.
+
+```{image} ../_static/figures/multiresolution.svg
+:class: only-light
+:alt: The levels as digits of the box index, and the binaries a resolution costs
+```
+
+```{image} ../_static/figures/multiresolution-dark.svg
+:class: only-dark
+:alt: The levels as digits of the box index, and the binaries a resolution costs
+```
+
+### What it buys
+
+**The resolution grows as a power and the binaries as a product.** The encoding
+reaches $m^L$ subdivisions per component for $n m L$ binaries, where the flat
+encoding needs $n m^L$:
+
+| resolution per component | flat binaries, $n=5$ | levels, $n=5$ |
+|--------------------------|----------------------|---------------|
+| $16$ | $80$ | $40$ as $m=2, L=4$; $40$ as $m=4, L=2$ |
+| $64$ | $320$ | $60$ as $m=4, L=3$ |
+| $1024$ | $5120$ | $100$ as $m=4, L=5$ |
+
+Since the density is bounded above by the binaries a budget can identify, and
+not by the boxes, this is the one construction here that moves that bound.
+
+**The bounds stay affine** in the one-hot variables, and the width
+$\Delta_j m^{-L}$ no longer depends on them at all, so the mapping
+$x = l(\alpha) + \xi \, \Delta \, m^{-L}$ is bilinear in $(\xi, \alpha)$ exactly
+as the one-level mapping is, with constant Jacobian blocks. Nothing in the
+bi-level machinery has to change.
+
+**Nothing is discarded and nothing is committed.** One master holds every level,
+so the cuts survive, and the master may change a coarse digit and a fine one in
+the same iteration. That is the backtracking the descending hierarchies lack,
+obtained without restarting anything.
+
+### What it costs
+
+**The model class.** The cut model is linear in the one-hot variables, so over
+the digits it is **additive**: it can represent what each level contributes on
+its own, and not that the effect of a fine digit depends on the coarse digit it
+sits inside. On a landscape where it does — and on a multimodal one it always
+does, the same fine offset meaning different things in different regions — the
+model is misspecified in a way the flat encoding is not, the flat encoding
+having one coefficient per box index and no such restriction.
+
+**The trust region has to be rescaled.** The metric counts the one-hot groups a
+candidate changes, and this encoding has $nL$ groups where the flat one has $n$.
+A radius of two would let the master change two *digits*, which is far tighter
+than letting it change two whole variables, so the radius is scaled to $2L$ to
+compare like with like. Measured with the radius left at the diameter, that is
+with no effective region at all, the encoding looks considerably worse than it
+is.
+
+What it is worth is in
+[the results](benchmark.md#the-extensions-and-what-they-are-worth).
+
 ## Relation to spatial branch-and-bound
 
 Seen as a whole, the method is a **spatial branch-and-bound whose branching tree
