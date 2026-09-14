@@ -25,7 +25,8 @@ from gemseo.algos.opt.factory import OptimizationLibraryFactory
 from gemseo.core.base_factory import BaseFactory
 
 import gemseo_box_subdivision
-from gemseo_box_subdivision.algos import opt
+from gemseo_box_subdivision import disciplines
+from gemseo_box_subdivision import subdivisions
 
 PACKAGE_NAME = "gemseo_box_subdivision"
 
@@ -53,9 +54,7 @@ def test_entry_point_is_declared() -> None:
     assert PACKAGE_NAME in values
 
 
-@pytest.mark.parametrize(
-    "package", [gemseo_box_subdivision, gemseo_box_subdivision.algos, opt]
-)
+@pytest.mark.parametrize("package", [gemseo_box_subdivision, subdivisions, disciplines])
 def test_packages_are_importable(package) -> None:
     """Check that the packages scanned by the GEMSEO factories are importable."""
     assert package.__name__.startswith(PACKAGE_NAME)

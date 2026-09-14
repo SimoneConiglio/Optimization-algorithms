@@ -26,16 +26,27 @@ insert the license headers and check the commit messages with
 
 ```text
 src/gemseo_box_subdivision/
-└── algos/
-    └── opt/            # the optimization libraries contributed to GEMSEO
+├── __init__.py         # the public namespace, re-exporting everything below
+├── scenario.py         # the entry point building a run
+├── settings.py         # the settings, in the units the methodology measures
+├── subdivisions/       # how a design space is cut into boxes
+├── design_spaces.py    # the design spaces a subdivision builds
+├── hierarchy.py        # refining a box rather than subdividing finely
+└── disciplines/        # the disciplines the formulations are built from
 tests/                  # mirrors the layout of src
 docs/                   # the Sphinx documentation
 benchmarks/             # the algorithm benchmarks
 ```
 
+Everything a user needs is re-exported from the top-level namespace, so user
+code imports from `gemseo_box_subdivision` and never from a submodule.
+
 ## Adding an optimization algorithm
 
-Create `src/gemseo_box_subdivision/algos/opt/<algo_name>/` containing:
+This package contributes no optimization library of its own: the method is a
+composition over the `Benders` formulation and the master of
+`gemseo-bilevel-outer-approximation`. Should one be added, create
+`src/gemseo_box_subdivision/algos/opt/<algo_name>/` containing:
 
 1. `<algo_name>_settings.py`, with a settings model deriving from
    `BaseOptimizerSettings` (or a more specific base such as `BaseMILPSettings`)
