@@ -59,65 +59,84 @@ conclusion is withdrawn. The two are swept apart below.
 
 ### The adaptive repair, which reaches the optimum most often
 
-Rastrigin in two dimensions, eight starting points, no convexification constant:
+Rastrigin, ten subdivisions per variable, no convexification constant. Two
+variables, eight starting points, a budget of $1000$; each cell is the number of
+them from which the optimum was reached, and the median cost:
 
-| parallel points | `min_dfk` = 1 | 10 | **30** | **100** | 300 |
-|-----------------|---------------|----|--------|---------|-----|
-| 1 | 0/8 | 0/8 | — | — | — |
-| **4** | 1/8 | 3/8 | **8/8** (26 boxes) | **8/8** (24 boxes) | 7/8 |
-| 8 | 0/8 | 1/8 | 8/8 (26) | 8/8 (52) | 8/8 (56) |
+| parallel points | `min_dfk` = 1 | 10 | 30 | **100** | 300 |
+|-----------------|---------------|----|----|---------|-----|
+| 1 | 0/8 | 0/8 | 2/8 | 6/8 (294) | 5/8 (294) |
+| **4** | 1/8 | 5/8 | 7/8 | **8/8 (543)** | **8/8 (550)** |
+| 8 | 1/8 | 1/8 | 8/8 (907) | 8/8 (1000) | 7/8 (1000) |
 
-Two settings are essential rather than an optimization.
+Two settings matter, and one of them for a different reason than an earlier
+version of this page gave.
 
-**Several parallel points.** The master probes one trust-region radius per point,
-over `geomspace(step / 2, step)`, so that a feasible master problem stays
-available. With a single point the run stops after two or three boxes whatever
-the margin.
+**Several parallel points.** The master probes one trust-region radius per
+point, over `geomspace(step / 2, step)`, so that a feasible master problem stays
+available. Four points reach the optimum every time; a single point reaches it
+from six starting points out of eight, and eight points also reach it every time
+but for nearly twice the cost, spending the budget on probes rather than on
+boxes. Four is therefore a cost trade, not a matter of feasibility. With the
+trust region charging the catalogue values, a single point used to stop a run
+after two or three boxes; that collapse was the metric, not the probing.
 
 **A margin on the scale of the objective.** `min_dfk` is subtracted from an
 objective difference, so it is an absolute quantity in the units of the
-objective, not a ratio. The objective spans about eighty here, and a margin of
-thirty to a hundred reaches the optimum every time, a margin of ten three times
-out of eight, a margin of one never.
+objective, not a ratio. What it does is **cross a threshold and then saturate**,
+rather than pass through a window: over an objective spanning about eighty, the
+margin reaches the optimum from one starting point at $1$, five at $10$, seven
+at $30$, and all eight at $100$ and at $300$. Five variables agree, from none at
+$10$, two out of three at $30$, and all three at $100$ and at $300$:
+
+| `min_dfk` | 1 | 10 | 30 | **100** | 300 |
+|-----------|---|----|----|---------|-----|
+| Rastrigin, $n=5$ | $17.91$ · 0/3 | $5.11$ · 0/3 | $0.00$ · 2/3 | **$0.00$ · 3/3** | $0.00$ · 3/3 |
+| Ackley, $n=5$ | $8.99$ · 0/3 | $4.95$ · 1/3 | $4.95$ · 0/3 | $6.30$ · 0/3 | $7.23$ · 1/3 |
+
+An over-large margin costs sub-problems rather than quality, so the default sits
+at the first value that saturates. Ackley is the reminder that the margin is in
+the units of *its* objective, which spans about twenty-two rather than eighty:
+there the useful margin is the smallest one tried.
 
 ### The pure convexification, and the range where it is worth using
 
 The constant has to dominate the non-convexity of the relaxed problem, and no
 more: past that, every unexplored box outranks the incumbent whatever the cuts
 say, the master ranks them by nothing in particular, and the method degenerates
-towards the enumeration it exists to avoid. Since the enumeration of these $100$
-boxes is available for free and is embarrassingly parallel, a configuration is
-only worth its complexity while it stays well under it, which is the last two
-columns below.
+towards the enumeration it exists to avoid. Unlike the convexity margin above,
+it therefore passes through a genuine **window**, with a floor and a ceiling.
 
-Same problem and starting points, `adapt` off, one parallel point, trust region
-sized to the design space:
+Rastrigin, same protocol, `adapt` off, one parallel point:
 
-| constant | reached | worst | boxes | of the enumeration | evaluations | of the enumeration |
-|----------|---------|-------|-------|--------------------|-------------|--------------------|
-| $10$ | 0/8 | $17.91$ | 2 | 2% | 32 | 3% |
-| $20$ | 5/8 | $3.98$ | 14 | 14% | 182 | 14% |
-| $30$ | 7/8 | $1.99$ | 26 | 26% | 334 | 26% |
-| $50$ | **8/8** | $0.00$ | 22 | 22% | 288 | 23% |
-| $75$ | 7/8 | $0.99$ | 22 | 22% | 281 | 22% |
-| $100$ | **8/8** | $0.00$ | 20 | 20% | 254 | 20% |
-| $150$ | 6/8 | $0.99$ | 22 | 22% | 283 | 22% |
-| $200$ | 5/8 | $1.99$ | 18 | 18% | 239 | 19% |
-| $300$ | 6/8 | $0.99$ | 20 | 20% | 258 | 20% |
+| constant | 10 | **30** | **50** | **100** | 200 |
+|----------|----|--------|--------|---------|-----|
+| $n=2$, budget $1000$ | $6.97$ · 0/8 | **$0.00$ · 6/8 (456)** | $0.00$ · 5/8 | **$0.00$ · 6/8 (466)** | $0.50$ · 4/8 |
+| $n=5$, budget $2500$ | $33.41$ · 0/3 | $30.84$ · 0/3 | **$0.00$ · 2/3** | $1.92$ · 0/3 | $9.09$ · 0/3 |
 
-The useful window is **fifty to a hundred**, where the optimum is reached from
-every starting point for about a fifth of the enumeration. It is no accident that
-this is the order of magnitude of the variation of the objective over the design
-space, about eighty here, which is also the order of the convexity margin the
-adaptive repair needs: both mechanisms are calibrated against the same quantity,
-the non-convexity they have to dominate, and neither is dimensionless.
+The window **narrows as the dimension grows**. At two variables a factor of
+three in the constant makes little difference and the mechanism reaches the
+optimum from five or six starting points out of eight. At five variables only
+one of the constants tried, $50$, reaches it at all, the two below it leaving
+the cuts invalid and the two above it ranking the boxes by nothing. Ackley says
+the same with its own scale, best at $100$ and much worse at $200$.
 
-Past that window the result decays, $6/8$ then $5/8$, and it keeps decaying at the
-values tried before writing this, $4/8$ at $10^4$ and $3/8$ at $10^5$. What does
-*not* happen is the cost growing with the constant: it stays near a fifth of the
-enumeration throughout, because the run ends on the two caps described next
-rather than on its optimality test. An exaggerated constant therefore buys
-nothing and costs the same; it is not a safe default to be conservative with.
+Against the adaptive repair, which reaches the same optima from eight starting
+points out of eight at two variables and three out of three at five, the pure
+convexification is **dominated on this benchmark**. It is kept because its
+argument is the one the outer approximation actually rests on, and because it
+needs no observed pairs to work from; it is not the default.
+
+It is no accident that the useful constants are the order of magnitude of the
+variation of the objective over the design space, which is also the order of the
+convexity margin the adaptive repair needs: both mechanisms are calibrated
+against the same quantity, the non-convexity they have to dominate, and neither
+is dimensionless.
+
+What does *not* happen is the cost growing with the constant: an exaggerated
+constant buys nothing and costs about the same, because the run ends on the two
+caps described next rather than on its optimality test. It is not a safe default
+to be conservative with.
 
 ### The two caps that end a run
 
