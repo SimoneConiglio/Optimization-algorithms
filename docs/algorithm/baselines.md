@@ -120,16 +120,55 @@ dimensions and loses its edge in five.
 **How it is run.** `scipy.optimize.direct`, which ignores the starting point,
 being deterministic, with `maxfun` and `maxiter` set to the budget.
 
-## The three compared
+## EGO, Bayesian optimization
 
-| | multistart | CMA-ES | DIRECT | box subdivision |
-|---|---|---|---|---|
-| gradient | yes, in each local solve | no | no | yes, in each sub-problem |
-| stochastic | the starting points | yes | no | no |
-| exploits the past | no | the covariance | the partition | the cuts of every solved box |
-| limit guarantee | with infinitely many starts | none | dense sampling | out of reach, see [annex C](tuning.md#the-two-caps-that-end-a-run) |
-| parallel | the starts | the population | the potentially optimal rectangles | the boxes of an iteration |
-| natural regime | a few basins, cheap objective | rippled landscapes, no gradient | low dimension | costly sub-problem with an adjoint |
+`egobox` (Lafage, 2022), the Rust implementation of efficient global
+optimization (Jones, Schonlau and Welch, 1998). A Gaussian process is fitted to
+everything evaluated so far, and the next point maximizes an expected improvement
+over it: the surrogate carries the whole memory of the run, and the acquisition
+decides between refining a known basin and probing an unexplored one.
+
+This is the baseline of the regime the method targets. Where an evaluation costs
+minutes, the cost of fitting a surrogate is free by comparison and a few hundred
+evaluations is the whole budget, which is exactly the case the outer
+approximation is built for.
+
+It is therefore the one baseline that a comparison **at equal evaluations on
+analytic problems flatters least**. Its own cost is not counted here, and on
+these problems that cost dominates: a run of five hundred evaluations takes some
+two and a half minutes against three seconds for the box subdivision, a hundred
+times more for the same budget. On an industrial objective that ratio inverts,
+and nothing in this benchmark measures the inversion.
+
+Its budget is enforced natively and exactly, the number of calls being
+`n_doe + max_iters` with a batch of one. It is capped that way rather than by the
+counter because `egobox` is a Rust extension: an exception raised inside its
+objective surfaces as an opaque panic instead of propagating, as it does for the
+C extension of DIRECT. The initial design of experiments is five points per
+variable, kept below half the budget so that the surrogate is used rather than
+merely fitted.
+
+It has a **stopping criterion of its own**, and it fires: on Styblinski-Tang the
+expected improvement collapses once the process models the landscape, and the run
+ends after twenty-nine evaluations of the five hundred it was allowed, a gap of
+$0.286$ from the optimum. A cost below the budget means EGO finished, not that it
+was cut off.
+
+## The four compared
+
+| | multistart | CMA-ES | DIRECT | EGO | box subdivision |
+|---|---|---|---|---|---|
+| gradient | yes, in each local solve | no | no | no | yes, in each sub-problem |
+| stochastic | the starting points | yes | no | the initial design | no |
+| exploits the past | no | the covariance | the partition | the surrogate, over every point | the cuts of every solved box |
+| limit guarantee | with infinitely many starts | none | dense sampling | dense sampling | out of reach, see [annex C](tuning.md#the-two-caps-that-end-a-run) |
+| parallel | the starts | the population | the potentially optimal rectangles | a batch of the acquisition | the boxes of an iteration |
+| own cost per iteration | negligible | negligible | negligible | **cubic in the points so far** | one mixed-integer solve |
+| natural regime | a few basins, cheap objective | rippled landscapes, no gradient | low dimension | costly objective, small budget | costly sub-problem with an adjoint |
+
+EGO and the box subdivision are the two built for the same regime, which is what
+makes the comparison between them the informative one and the row on their own
+cost the caveat that goes with it.
 
 ## Counting a budget across methods that differ that much
 
@@ -175,15 +214,6 @@ industrial case does not have one: it is a disciplinary optimization or a
 multidisciplinary analysis. They are the right comparison for a polynomial
 program, and no comparison at all for this one.
 
-**Bayesian optimization**, EGO and its descendants (Jones, Schonlau and Welch,
-1998), is the serious omission. It is the standard answer when an evaluation is
-expensive, which is the regime this method targets, and it would be the sharpest
-comparison on an industrial case. It is left out here because these analytic
-problems are the regime where it is least at home, its cost being dominated by
-the surrogate rather than by the objective, and because a fair comparison needs
-care about its own budget accounting. It belongs in any claim made beyond this
-benchmark.
-
 **Basin hopping**, **particle swarm** and **simulated annealing** are variations
 on the two families already represented, a restarted local solver and a
 stochastic search, and would not separate the methods further.
@@ -197,6 +227,11 @@ stochastic search, and would not separate the methods further.
 - Hansen, N., & Ostermeier, A. (2001). *Completely derandomized self-adaptation in
   evolution strategies.* Evolutionary Computation, 9(2), 159-195.
 - Hansen, N. (2016). *The CMA evolution strategy: a tutorial.* arXiv:1604.00772.
+- Jones, D. R., Schonlau, M., & Welch, W. J. (1998). *Efficient global
+  optimization of expensive black-box functions.* Journal of Global Optimization,
+  13(4), 455-492.
+- Lafage, R. (2022). *egobox, a Rust toolbox for efficient global optimization.*
+  Journal of Open Source Software, 7(78), 4737.
 - Jones, D. R., Perttunen, C. D., & Stuckey, B. E. (1993). *Lipschitzian
   optimization without the Lipschitz constant.* Journal of Optimization Theory
   and Applications, 79(1), 157-181.

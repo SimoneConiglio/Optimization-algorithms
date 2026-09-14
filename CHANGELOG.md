@@ -125,6 +125,14 @@ and this project adheres to
 
 ### Added
 
+- EGO, the Bayesian optimization of `egobox`, is a fifth baseline, and with it a
+  comparison at one budget of five hundred evaluations that every method can
+  afford, `benchmarks/small_budget.py`. It is the baseline of the regime the
+  method targets, and at that budget it explores the hard multimodal cases
+  better than anything else here, returning $1.99$ on Rastrigin at five variables
+  against $4.98$ for DIRECT and $8.57$ for this method. Its own cost, a hundred
+  times this method's on the same cell, is not counted in that table and is what
+  an expensive objective would invert.
 - Initial packaging of the project as a GEMSEO plugin, generated from the
   [GEMSEO copier template](https://gitlab.com/gemseo/dev/copier-gemseo).
 - Dependency on `gemseo-bilevel-outer-approximation`.

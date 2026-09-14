@@ -106,7 +106,15 @@ Not established:
 - **behaviour with constraints.** Every problem here is bound-constrained only.
 - **the industrial case.** The method earns its complexity when a sub-problem
   costs minutes, which is the regime none of these analytic problems is in, and
-  the one where the baselines that need an algebraic form cannot compete.
+  the one where the baselines that need an algebraic form cannot compete. The
+  comparison with Bayesian optimization now exists, at a budget of five hundred
+  evaluations, and it is the one that should worry a claim made for this method:
+  EGO explores the hard multimodal cases better at that budget, returning $1.99$
+  on Rastrigin at five variables where this method returns $8.57$. What is not
+  counted there is EGO's own cost, a hundred times this method's on the same
+  cell, which an expensive objective would invert. Establishing the method
+  against it needs a case where that inversion is real, not an analytic problem
+  where it is argued.
 
 ## Where this can go
 
@@ -136,6 +144,9 @@ what turns the method into one that can stop on a proof rather than on a budget.
 **The regime the method is for.** Every problem here is analytic and
 bound-constrained, where a sub-problem costs microseconds. The method is built
 for a sub-problem that costs minutes and comes with an adjoint, and for
-constraints that make a box infeasible rather than merely expensive. A case of
-that kind, against Bayesian optimization as well as against the baselines used
-here, is what would establish it.
+constraints that make a box infeasible rather than merely expensive. Bayesian
+optimization is now in the comparison, and at a small budget it is the method to
+beat on the hardest landscapes; what the benchmark cannot show is the one thing
+that would decide between them, an objective expensive enough that the cost of
+fitting a surrogate stops being free. A case of that kind is what would establish
+either.

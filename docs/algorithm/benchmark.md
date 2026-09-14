@@ -115,6 +115,64 @@ transfer between them unchanged. A claim about the method needs a held-out set o
 problems and a protocol fixed in advance.
 :::
 
+## At a budget every method can afford
+
+The comparison above gives every method $500$ equivalent evaluations **per
+variable**, which is generous to all of them and representative of nothing
+industrial. It also excludes Bayesian optimization, whose cost per iteration is
+cubic in the points gathered so far: one EGO run of $500$ evaluations takes about
+two and a half minutes here against three seconds for the box subdivision, and at
+the budgets above it would measure wall time rather than method quality.
+
+So here is the same set of methods at **one budget of $500$ evaluations**, which
+every one of them can afford, and which is the regime both EGO and this method
+are built for: an objective costing minutes, where a few hundred evaluations is
+the whole budget. Four problems, two dimensions each, three starting points, the
+median distance to the optimum and the number of starting points reaching it.
+
+| problem | $n$ | box subdivision | multistart | CMA-ES | DIRECT | EGO |
+|---------|-----|-----------------|------------|--------|--------|-----|
+| Rastrigin | 2 | $0.00$ · **3/3** | $0.00$ · 2/3 | $1.00$ | $0.00$ · **3/3** | $0.00$ · 2/3 |
+| Ackley | 2 | $0.00$ · 2/3 | $9.58$ | $0.00$ · **3/3** | $0.00$ · **3/3** | $0.32$ |
+| Styblinski-Tang | 2 | $0.00$ · **3/3** · 218 | $0.00$ · **3/3** | $0.00$ · 2/3 | $0.00$ · **3/3** | $0.29$ · 29‡ |
+| Griewank | 2 | $0.007$ | $0.067$ | $0.048$ | $0.009$ | **$0.008$** |
+| Rastrigin | 5 | $8.57$ | $9.95$ | $11.20$ | $4.98$ | **$1.99$** |
+| Ackley | 5 | $14.43$ | $17.06$ | **$0.05$** | $0.11$ | $2.90$ |
+| Styblinski-Tang | 5 | $0.00$ · 2/3 · 458 | $14.14$ · 1/3 | $0.003$ | $0.00$ · **3/3** | $0.14$ · 219‡ |
+| Griewank | 5 | $0.061$ | $0.096$ | $0.381$ | **$0.011$** | $0.104$ |
+
+‡ EGO stopped on its own criterion, after $29$ and $219$ evaluations of the
+$500$ it was allowed: its expected improvement collapses once the process models
+the landscape. Every other cell of the table spent its whole budget.
+
+**EGO is the best explorer of the hard multimodal cases at this budget**, and by
+a wide margin where it matters most: on Rastrigin in five dimensions it returns
+$1.99$ where the next best is DIRECT at $4.98$ and the box subdivision at
+$8.57$. It also gets closest on Griewank in two dimensions. That is the result
+your intuition should keep: given few evaluations and a landscape of many
+basins, a surrogate over the whole history beats every method here that throws
+its history away.
+
+**It is also a hundred times more expensive in its own time**, $444$ seconds
+against $3$ for the box subdivision on the same cell, and that cost is not
+counted anywhere in the table. On an objective costing minutes the ratio
+inverts and the table stands; on these analytic problems it does not.
+
+**The box subdivision is the cheapest route to a solved problem where the
+subdivision resolves the basins**, Styblinski-Tang at $218$ evaluations in two
+dimensions and $458$ in five, both ending on their own criterion rather than on
+the budget. Where it does not resolve them, five hundred evaluations is simply
+too few for it: Rastrigin at five variables needs the $2103$ of the density
+sweep below, and no method here solves that problem at this budget.
+
+:::{note}
+This table and the one above answer different questions, and neither supersedes
+the other. This one asks which method gets furthest when evaluations are scarce,
+which is the industrial case. The one above asks what each method reaches when
+evaluations are plentiful, which is where the box subdivision's density can be
+afforded at all.
+:::
+
 ## The density of the subdivision decides
 
 The number of boxes is the Cartesian product of the subdivisions, so it explodes
