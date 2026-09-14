@@ -30,6 +30,29 @@ and this project adheres to
 
 ### Fixed
 
+- The trust region of the master measures a distance. The design spaces of this
+  package now weigh every subdivision alike, so that the distance between two
+  boxes is the number of components a candidate changes. They used to inherit the
+  default of `CatalogueDesignSpace`, which weighs a numeric catalogue by the
+  catalogue values themselves; with the cost of a move charged on the weight the
+  **incumbent** holds, leaving the first subdivision of a component was free and
+  leaving the last cost $m_j - 1$, whatever the destination, so the region was
+  lopsided rather than local and became infeasible at high indexes. Reported
+  upstream. On Rastrigin with five variables and ten subdivisions this is the
+  difference between a gap of $0.995$ from two starting points out of six and the
+  optimum from all six; the settings, the density sweep, the hierarchies and the
+  multi-resolution encoding were all re-measured against it.
+- The radius of the trust region is small, `TRUST_REGION_RADIUS = 2` components,
+  rather than the diameter of the design space that the documentation used to
+  recommend. Once the distance is a distance, widening the region is markedly
+  worse and removing it is worse still.
+- The benchmark runner survives a budget spent inside a linearization, which
+  GEMSEO reports as a missing output key rather than as the budget error raised
+  underneath it; such a run used to crash instead of returning its best point.
+- The multi-resolution encoding is measured with a trust region at all. Its
+  radius was being taken from the diameter helper, which for unit weights returns
+  the number of one-hot groups, so the region did not constrain; it is now scaled
+  by the number of levels, this encoding having one group per level per variable.
 - The benchmarks no longer mix the two mechanisms of the master, the adaptive
   repair of the cut slopes and the fixed convexification constant, which are
   different approaches. The configuration is now an explicit axis,
@@ -49,11 +72,13 @@ and this project adheres to
 
 ### Changed
 
-- The density of a subdivision is bounded by a measurable ratio rather than by
-  the number of boxes: the cut model carries as many coefficients as there are
+- The density of a subdivision is bounded above by a measurable ratio rather than
+  by the number of boxes: the cut model carries as many coefficients as there are
   binaries, and a budget affords a few dozen cuts. On five variables, ten
   subdivisions per variable is the best density measured and sixteen is markedly
-  worse, whatever the boxes they represent.
+  worse, whatever the boxes they represent. It is bounded below by the spacing of
+  the basins, and refining past them degrades the ranking rather than merely
+  costing sub-problems, so no single density serves the four benchmark problems.
 - The results show the hierarchies beside the flat subdivisions in a figure of
   their own, the distance to the optimum and the cost, with a tick per starting
   point reaching the optimum, and the frontier is measured over six starting
