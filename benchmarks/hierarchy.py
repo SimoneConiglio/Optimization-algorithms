@@ -56,8 +56,6 @@ from gemseo.settings.opt import SLSQP_Settings
 from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (  # noqa: E501
     BiLevelMasterOuterApproximation_Settings,
 )
-from numpy import argsort
-from numpy import array
 from numpy import full
 from numpy.random import default_rng
 
@@ -69,12 +67,12 @@ from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
 from benchmarks.problems import Objective
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_box_samples,
-)
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
     create_normalized_box_design_space,
 )
 from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.algos.opt.hierarchy import RANKINGS
+from gemseo_box_subdivision.algos.opt.hierarchy import compute_cut_model
+from gemseo_box_subdivision.algos.opt.hierarchy import read_solved_boxes
 from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 
 if TYPE_CHECKING:
@@ -226,111 +224,7 @@ def _solve_level(
             )
         )
 
-    problem = scenario.formulation.optimization_problem
-    name = problem.objective.name
-    solved = []
-    for key, values in problem.database.items():
-        value = values.get(name)
-        slope = values.get(f"@{name}")
-        if value is not None and slope is not None:
-            solved.append((
-                array(key.unwrap()).ravel(),
-                float(value),
-                array(slope).ravel(),
-            ))
-
-    return subdivision, solved
-
-
-def _rank_by_value(solved, subdivision):  # noqa: ANN001, ANN201, ARG001
-    """Rank the boxes by the value of the sub-problem solved inside them.
-
-    Args:
-        solved: The solved boxes.
-        subdivision: The subdivision of the level.
-
-    Returns:
-        The one-hot vectors, from the most promising.
-    """
-    return [solved[rank][0] for rank in argsort([value for _, value, _ in solved])]
-
-
-def _rank_by_cuts(solved, subdivision):  # noqa: ANN001, ANN201
-    r"""Rank **every** box of the subdivision by the cut model of the master.
-
-    The cuts the master has gathered define a lower estimate of the value of the
-    problem over the whole subdivision,
-
-    $$\\hat u(\alpha) = \\max_i \\, u(\alpha^{(i)})
-        + s^{(i)\top}(\alpha - \alpha^{(i)}),$$
-
-    which is defined at the boxes the master never solved as well as at those it
-    did. Ranking by it therefore proposes boxes that were never visited, where
-    ranking by the value can only propose boxes whose sub-problem was solved,
-    that is, at most a few dozen of them.
-
-    Args:
-        solved: The solved boxes.
-        subdivision: The subdivision of the level.
-
-    Returns:
-        The one-hot vectors, from the most promising.
-    """
-    boxes, model = _cut_model(solved, subdivision)
-    return [boxes[rank] for rank in argsort(model)]
-
-
-def _cut_model(solved, subdivision):  # noqa: ANN001, ANN201
-    """Return every box of the subdivision and what the cuts estimate there.
-
-    Args:
-        solved: The solved boxes.
-        subdivision: The subdivision of the level.
-
-    Returns:
-        The one-hot vector of every box, and the value the cuts estimate there.
-    """
-    boxes = create_box_samples(subdivision)
-    values = array([value for _, value, _ in solved])
-    alphas = array([alpha for alpha, _, _ in solved])
-    slopes = array([slope for _, _, slope in solved])
-    # One row per box, one column per cut.
-    model = (
-        values[None, :] + boxes @ slopes.T - (alphas * slopes).sum(axis=1)[None, :]
-    ).max(axis=1)
-    return boxes, model
-
-
-def _rank_mixed(solved, subdivision):  # noqa: ANN001, ANN201
-    """Alternate the two rules, the first box from each in turn.
-
-    The two rules fail on opposite landscapes: the value is noise where a coarse
-    box holds many basins, and the cut model, being an optimistic estimate,
-    extrapolates towards boxes far from anything solved, which is exploration
-    where the value ranking already points at the right region. Taking one box
-    from each in turn refines both the best box seen and the most promising
-    unseen one.
-
-    Args:
-        solved: The solved boxes.
-        subdivision: The subdivision of the level.
-
-    Returns:
-        The one-hot vectors, from the most promising.
-    """
-    by_value = _rank_by_value(solved, subdivision)
-    by_cuts = _rank_by_cuts(solved, subdivision)
-    mixed = []
-    for value_box, cut_box in zip(by_value, by_cuts, strict=False):
-        for box in (value_box, cut_box):
-            if not any((box == other).all() for other in mixed):
-                mixed.append(box)
-
-    return mixed
-
-
-RANKINGS = {"value": _rank_by_value, "cuts": _rank_by_cuts, "mixed": _rank_mixed}
-"""The rules deciding which boxes to refine, by name."""
+    return subdivision, read_solved_boxes(scenario.formulation.optimization_problem)
 
 
 def run_hierarchical(
@@ -542,8 +436,8 @@ def run_frontier(
         if not solved:
             continue
 
-        observed = {tuple(alpha): value for alpha, value, _ in solved}
-        boxes, model = _cut_model(solved, subdivision)
+        observed = {tuple(box.one_hot): box.value for box in solved}
+        boxes, model = compute_cut_model(solved, subdivision)
         children = []
         for one_hot, estimate in zip(boxes, model, strict=True):
             known = observed.get(tuple(one_hot))

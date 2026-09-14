@@ -291,11 +291,45 @@ solved = [
 ```
 
 The three shapes described in
-[the methodology](methodology.md#hierarchies-of-subdivisions) are wired up in
-`benchmarks/hierarchy.py`, sharing one budget between the levels. Unlike the
-constructions above, they live in the benchmarks rather than in the package, so
-applying them to another problem means copying that module rather than importing
-it:
+[the methodology](methodology.md#hierarchies-of-subdivisions) are in the package.
+Each is a loop around the method, so it is driven by a callable that solves one
+level and reports the boxes it solved: you keep the construction of your own
+scenario and your own accounting of the budget, and return **no solved box** when
+that budget is spent.
+
+```python
+from gemseo_box_subdivision.algos.opt.hierarchy import read_solved_boxes, refine_deep
+
+
+def solve(lower, upper, n_subdivisions):
+    """Run the method once over these bounds."""
+    space = DesignSpace()
+    space.add_variable("x", lower_bound=lower, upper_bound=upper, size=lower.size)
+    subdivision = BoxSubdivision.from_design_space(space, n_subdivisions)
+    scenario = create_scenario(
+        [MDOChain([BoxMapping(subdivision), objective_discipline])],
+        "f",
+        create_normalized_box_design_space(subdivision, space),
+        formulation_name="Benders",
+        main_problem_design_variables=["x_box"],
+        sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
+        sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
+    )
+    if budget_is_spent():
+        return subdivision, []
+
+    scenario.execute(settings)
+    problem = scenario.formulation.optimization_problem
+    return subdivision, read_solved_boxes(problem)
+
+
+visited = refine_deep(solve, lower_bound, upper_bound, branching=2, depth=4)
+```
+
+`refine_two_levels` and `refine_frontier` take the same callable, and each
+returns the bounds of every region it visited. `benchmarks/hierarchy.py` wires
+this to the benchmark problems, sharing one budget between the levels so that a
+hierarchy and a flat run are compared at equal cost:
 
 ```python
 from benchmarks.hierarchy import run_deep, run_frontier, run_hierarchical

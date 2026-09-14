@@ -139,9 +139,9 @@ comparison isolate the exploration strategy.
 
 ## The extensions
 
-Four extensions of the method are implemented, three in the package, so that they
-can be applied to another problem by importing them, and one as a prototype in
-the benchmarks.
+Four extensions of the method are implemented, all of them in the package, so
+that each can be applied to another problem by importing it rather than by
+copying a benchmark.
 
 ### Subdividing some of the variables only
 
@@ -203,27 +203,47 @@ of levels.
 
 ### The hierarchies
 
-`benchmarks/hierarchy.py` builds the three shapes on top of the package rather
-than inside it, since each one is a **loop around the method** and not a change
-to it:
+{py:mod}`~gemseo_box_subdivision.algos.opt.hierarchy` holds the scoring rules and
+the three shapes. A shape is a **loop around the method** rather than a change to
+it, so it is driven by a callable that solves one level and reports the boxes it
+solved, leaving the caller its own scenario and its own accounting of the budget:
 
-`run_hierarchical`
-: two levels, with the boxes to refine chosen by `_rank_by_value`, `_rank_by_cuts`
-  or `_rank_mixed`, the second of which evaluates the cut model of the master,
-  `_cut_model`, over every box of the subdivision.
+```python
+def solve(lower_bound, upper_bound, n_subdivisions):
+    ...  # build and execute a scenario over these bounds
+    return subdivision, read_solved_boxes(problem)
 
-`run_deep`
-: one box refined per level, every variable split in two, to a given depth.
 
-`run_frontier`
-: a priority queue of open boxes of every level, expanded best first, which is
-  the only shape able to return to a box it passed over.
+refine_deep(solve, lower_bound, upper_bound, branching=2, depth=4)
+```
 
-All three share one budget through `Level`, a counter that spends a share of the
-budget of the run and raises when that share is gone, so that a hierarchy and a
-flat run are compared at equal cost. The cuts of a level are read back from the
-database of its master, which stores the value and the post-optimal sensitivity
-of every solved box.
+Returning **no solved box** ends the search, which is how a caller reports that
+its budget is spent or that its master became infeasible. Each shape returns the
+bounds of every region it visited.
+
+{py:func}`~gemseo_box_subdivision.algos.opt.hierarchy.read_solved_boxes`
+: reads back the value and the post-optimal sensitivity of every box a master
+  solved, from the database of its problem, as
+  {py:class}`~gemseo_box_subdivision.algos.opt.hierarchy.SolvedBox` records.
+
+{py:func}`~gemseo_box_subdivision.algos.opt.hierarchy.compute_cut_model`
+: evaluates the cuts of a master over **every** box of its subdivision, including
+  those it never solved, which is what lets a ranking propose an unvisited box.
+
+`rank_by_value`, `rank_by_cuts`, `rank_mixed`
+: the three rules, collected in
+  {py:data}`~gemseo_box_subdivision.algos.opt.hierarchy.RANKINGS`.
+
+`refine_deep`, `refine_two_levels`, `refine_frontier`
+: the three shapes, collected in
+  {py:data}`~gemseo_box_subdivision.algos.opt.hierarchy.SHAPES`. Only the
+  frontier can return to a box it passed over, holding a priority queue of open
+  boxes from every level.
+
+`benchmarks/hierarchy.py` is then only the GEMSEO wiring and the budget
+accounting: `Level`, a counter spending a share of the budget of a run and
+raising when that share is gone, so that a hierarchy and a flat run are compared
+at equal cost.
 
 ## What is checked
 

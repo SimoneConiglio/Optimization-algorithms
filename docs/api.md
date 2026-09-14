@@ -21,6 +21,16 @@
    gemseo_box_subdivision.algos.design_space.multi_resolution
 ```
 
+## Algorithms
+
+```{eval-rst}
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   gemseo_box_subdivision.algos.opt.hierarchy
+```
+
 ## Disciplines
 
 ```{eval-rst}
