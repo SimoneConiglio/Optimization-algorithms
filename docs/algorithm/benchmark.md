@@ -16,6 +16,23 @@ the settings were arrived at is [annex C](tuning.md).
 
 Reproduce with `tox -e benchmark`.
 
+:::{important}
+**Every selection on this page holds within its budget, and not beyond it.**
+The runs are given a fixed number of equivalent evaluations, and a cell whose
+cost equals that budget was **stopped by the budget rather than by its own
+criterion**: its distance to the optimum is an upper bound on what the same
+configuration would reach with more evaluations, not a result. Ranking two such
+cells says which got further within the budget, which is a weaker statement than
+which solves the problem. Cells reporting a cost below the budget did end on
+their own, and those comparisons are between finished runs.
+
+Where a conclusion here rests on a truncated run it is marked. The honest
+summary is that if the goal were to solve a problem from every starting point
+whatever the cost, the first thing to spend is budget, and the choices compared
+here would have to be re-ranked at that larger budget.
+:::
+
+
 ## Against the enumeration of the boxes
 
 The reference is the **enumeration**: solving the sub-problem of every box. It is
@@ -111,9 +128,11 @@ starting points reaching it:
 |-----|----------|-------|-----------|--------|-----------------|----------|
 | 2 | 10 | $32$ | $4.98$ · 823 | $14.43$ · 892 | $0.00$ · 458 · 2/3 | $0.06$ · 1016 |
 | 4 | 20 | $10^3$ | $6.70$ · 714 | $12.63$ · 1277 | **$0.00$ · 846 · 3/3** | $0.22$ · 1547 |
-| **10** | **50** | $10^5$ | **$0.00$ · 2103 · 3/3** | **$6.30$** · 2500 | $14.14$ · 598 · 1/3 | **$0.03$** · 2500 |
-| 16 | 80 | $10^6$ | $1.99$ · 1706 | $12.63$ · 2500 | $0.00$ · 973 · 2/3 | $0.05$ · 2500 |
-| 24 | 120 | $8 \cdot 10^6$ | $3.59$ · 1628 | $8.53$ · 2500 | $14.44$ · 1098 · 1/3 | $0.08$ · 2500 |
+| **10** | **50** | $10^5$ | **$0.00$ · 2103 · 3/3** | **$6.30$** · 2500† | $14.14$ · 598 · 1/3 | **$0.03$** · 2500† |
+| 16 | 80 | $10^6$ | $1.99$ · 1706 | $12.63$ · 2500† | $0.00$ · 973 · 2/3 | $0.05$ · 2500† |
+| 24 | 120 | $8 \cdot 10^6$ | $3.59$ · 1628 | $8.53$ · 2500† | $14.44$ · 1098 · 1/3 | $0.08$ · 2500† |
+
+† stopped by the budget, so the gap is an upper bound rather than a result.
 
 ```{image} ../_static/figures/density.svg
 :class: only-light
@@ -129,6 +148,14 @@ starting points reaching it:
 $2100$ evaluations, which no baseline achieves at any budget tried here. That is
 the headline of the whole benchmark, and it needs ten subdivisions per variable:
 at two or four the problem is not solved at all.
+
+**The Rastrigin and Styblinski-Tang columns are between finished runs**, every
+cell ending below the budget, so what follows about them is a comparison of
+results. **The Ackley and Griewank columns are not**: from ten subdivisions
+upwards every run is stopped by the budget, so those two columns rank how far
+each density got in $2500$ evaluations and say nothing about which density would
+win with more. Ackley's apparent improvement with refinement is that kind of
+statement and no stronger.
 
 **There is a ceiling, and it is the binaries.** Past ten subdivisions the quality
 falls away on Rastrigin, $1.99$ at sixteen and $3.59$ at twenty-four, while the
@@ -192,11 +219,14 @@ of them beats the flat subdivision elsewhere.
 | method | Rastrigin | Ackley | Styblinski-Tang |
 |--------|-----------|--------|-----------------|
 | flat $m=2$ | $4.98$ | $14.43$ | $0.00$, 5/6, 486 |
-| flat $m=10$ | **$0.00$, 6/6, 1920** | $6.30$ | $0.00$, 1/6, 532 |
+| flat $m=10$ | **$0.00$, 6/6, 1920** | $6.30$, 2500† | $0.00$, 1/6, 532 |
 | two levels, by value | $4.98$ | $6.30$ | $0.00$, 5/6, 872 |
 | two levels, by cuts | $2.45$ | $8.11$ | $0.00$, 5/6, 987 |
 | deep, 4 levels of 2 | $4.98$ | **$0.00$, 4/6, 2387** | $0.00$, 5/6, 1494 |
-| frontier, best first | $6.70$ | $9.71$ | $0.00$, **6/6**, 2500 |
+| frontier, best first | $6.70$, 2500† | $9.71$, 2500† | $0.00$, **6/6**, 2500† |
+
+† stopped by the budget. The frontier is truncated by construction, its loop
+expanding boxes until the budget is spent.
 
 ```{image} ../_static/figures/extensions.svg
 :class: only-light
@@ -208,15 +238,16 @@ of them beats the flat subdivision elsewhere.
 :alt: The hierarchies against the flat subdivisions
 ```
 
-Two readings the medians alone hide. The deep hierarchy is the only
-configuration measured anywhere in this documentation that **solves** Ackley at
-five variables, from four starting points out of six, where the flat method at
-its best density never does. Its median gap is $0.00$ and its cost is nearly the
-whole budget, which is the shape of a run that either descends into the central
-basin or commits to the wrong subdomain and spends the rest of its budget there.
-Ackley is the problem whose single broad basin no density of this benchmark
-resolves, and splitting each variable in two, four times over, is what finally
-separates it.
+Two readings the medians alone hide, and one caveat that undoes part of the
+first.
+
+The deep hierarchy **solves Ackley** at five variables, from four starting
+points out of six, and it ends on its own criterion at $2387$ evaluations rather
+than on the budget. The flat subdivision at the same density does not, returning
+$6.30$ — but four of its six runs were **stopped by the budget**, so what is
+established is that the hierarchy gets there within $2500$ evaluations and the
+flat method does not, not that the flat method cannot. The comparison at larger
+budgets is below.
 
 On Styblinski-Tang every configuration solves the problem, so that panel is about
 cost alone, and the flat coarse subdivision wins outright, $486$ evaluations

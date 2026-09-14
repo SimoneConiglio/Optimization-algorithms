@@ -524,11 +524,12 @@ every cut, which is a different master problem from the one this package builds
 on, whose catalogue of boxes is fixed when the design space is created.
 
 That trade is why the hierarchies lose to the flat subdivision on the problems
-a flat subdivision can resolve. Where they win is the case the flat method has no
-answer to: a basin **too broad for any affordable density**. Ackley's single
-basin spans a range of sixty, no density of the benchmark separates it, and the
-deep hierarchy, splitting each variable in two four times over, solves it from
-four starting points out of six. Each of its levels carries only $2n$
+a flat subdivision can resolve. Where they win is a case the flat method does not
+reach within the same budget: a basin **too broad for the densities that budget
+affords**. Ackley's single basin spans a range of sixty, and the deep hierarchy,
+splitting each variable in two four times over, solves it from four starting
+points out of six and stops on its own criterion, where the flat subdivision at
+its best density spends the whole budget without getting there. Each of its levels carries only $2n$
 coefficients, so a quarter of the budget is enough to determine one, and the
 resolution reached is $2^4$ per variable without any level ever being large.
 
