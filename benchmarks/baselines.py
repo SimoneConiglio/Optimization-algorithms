@@ -130,6 +130,19 @@ class Result:
     n_gradient: int
     cost_adjoint: int
     cost_finite_differences: int
+    budget: int = 0
+
+    @property
+    def truncated(self) -> bool:
+        """Whether the run was stopped by its budget rather than by itself.
+
+        A run that spends its whole budget was still searching when it was cut
+        off, so its distance to the optimum is an upper bound on what the same
+        configuration would reach with more evaluations. Comparing two truncated
+        runs ranks how far each got within the budget, which is a weaker
+        statement than ranking how well each solves the problem.
+        """
+        return bool(self.budget) and self.cost_adjoint >= self.budget
 
     def gap(self, optimum: float) -> float:
         """Return the distance to the global minimum.
@@ -158,7 +171,7 @@ class BudgetedCounter(Counter):
         """  # noqa: D205, D212
         super().__init__(problem)
         self.__dimension = dimension
-        self.__budget = budget
+        self.budget = budget
         self.__adjoint = adjoint
 
     def __check(self) -> None:
@@ -167,7 +180,7 @@ class BudgetedCounter(Counter):
         Raises:
             BudgetExceededError: When the budget is spent.
         """
-        if self.cost(self.__dimension, self.__adjoint) >= self.__budget:
+        if self.cost(self.__dimension, self.__adjoint) >= self.budget:
             raise BudgetExceededError
 
     def objective(self, x: ndarray) -> float:  # noqa: D102
@@ -439,6 +452,7 @@ def _result(
         n_gradient=counter.n_gradient,
         cost_adjoint=counter.cost(dimension, adjoint=True),
         cost_finite_differences=counter.cost(dimension, adjoint=False),
+        budget=getattr(counter, "budget", 0),
     )
 
 
