@@ -41,6 +41,8 @@ from numpy import pi
 from numpy import sqrt
 
 matplotlib.use("Agg")
+import math
+
 import matplotlib.pyplot as plt  # noqa: E402
 
 DIRECTORY = Path(__file__).parent / "_static" / "figures"
@@ -933,6 +935,104 @@ def draw_extensions(foreground: str):
     return figure
 
 
+ENCODINGS_BUDGET = 2500
+"""The budget of the comparison of the encodings."""
+
+ENCODINGS = {
+    "Rastrigin": {
+        "flat $m=10$": (0.000, 50, 10, 2103, 3),
+        "flat $m=16$": (1.990, 80, 16, 1706, 0),
+        "$m=2$, $L=4$": (2.985, 40, 16, 2500, 0),
+        "$m=2$, $L=5$": (5.252, 50, 32, 2338, 0),
+        "$m=4$, $L=2$": (1.990, 40, 16, 1953, 1),
+        "$m=4$, $L=3$": (math.pi, 60, 64, 1409, 1),
+        "$m=2$, $L=4$, pos.": (7.043, 40, 16, 2500, 0),
+    },
+    "Ackley": {
+        "flat $m=10$": (6.302, 50, 10, 2500, 0),
+        "flat $m=16$": (12.632, 80, 16, 2500, 0),
+        "$m=2$, $L=4$": (7.076, 40, 16, 2500, 0),
+        "$m=2$, $L=5$": (14.819, 50, 32, 2500, 0),
+        "$m=4$, $L=2$": (7.398, 40, 16, 2457, 0),
+        "$m=4$, $L=3$": (math.tau, 60, 64, 2500, 0),
+        "$m=2$, $L=4$, pos.": (16.807, 40, 16, 2500, 0),
+    },
+}
+"""The encodings against the flat subdivisions, by problem.
+
+Each entry is the median distance to the optimum, the binaries of the master, the
+subdivisions per component reached, the median cost, and the number of the three
+starting points from which the optimum was reached.
+"""
+
+
+def draw_encodings(foreground: str):
+    """Draw what the multi-resolution encoding buys, and what it does not."""
+    problems = tuple(ENCODINGS)
+    names = tuple(next(iter(ENCODINGS.values())))
+    figure, axes_grid = plt.subplots(
+        2,
+        len(problems),
+        figsize=(4.6 * len(problems), 5.6),
+        sharex="col",
+        squeeze=False,
+    )
+    positions = arange(len(names))
+    # The flat encodings first, in a colour of their own.
+    colours = [
+        SECOND
+        if name.startswith("flat")
+        else ACCENT
+        if "pos." not in name
+        else "#868e96"
+        for name in names
+    ]
+    for column, problem in enumerate(problems):
+        entries = ENCODINGS[problem]
+        gaps = [entries[name][0] for name in names]
+        binaries = [entries[name][1] for name in names]
+        costs = [entries[name][3] for name in names]
+        reached = [entries[name][4] for name in names]
+
+        axes = axes_grid[0][column]
+        bars = axes.bar(positions, gaps, 0.68, color=colours)
+        for bar, cost, count in zip(bars, costs, reached, strict=True):
+            if cost >= ENCODINGS_BUDGET:
+                bar.set_hatch("///")
+                bar.set_edgecolor("white")
+
+            if count:
+                axes.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + max(gaps) * 0.02,
+                    "\u2713" * count,
+                    ha="center",
+                    fontsize=6.5,
+                    color=foreground,
+                )
+
+        axes.set_ylim(0.0, max(gaps) * 1.2)
+        axes.set_title(problem)
+        if column == 0:
+            axes.set_ylabel("distance to the optimum")
+
+        axes = axes_grid[1][column]
+        axes.bar(positions, binaries, 0.68, color=colours)
+        axes.set_xticks(positions)
+        axes.set_xticklabels(names, rotation=35, ha="right", fontsize=8)
+        if column == 0:
+            axes.set_ylabel("binaries of the master")
+
+    figure.suptitle(
+        "Five variables, one budget of 2500, median over three starting points. "
+        "The encodings reach\ntheir resolution on fewer binaries; hatched runs "
+        "were stopped by the budget",
+        fontsize=9.5,
+    )
+    figure.tight_layout()
+    return figure
+
+
 def draw_density(foreground: str):  # noqa: ARG001
     """Draw what the subdivision density does at five variables."""
     figure, axes = plt.subplots(figsize=(7.2, 3.4))
@@ -985,6 +1085,7 @@ FIGURES = {
     "results": (draw_results, "svg"),
     "extensions": (draw_extensions, "svg"),
     "density": (draw_density, "svg"),
+    "encodings": (draw_encodings, "svg"),
 }
 """The figures, by name, with the format each is written in."""
 
