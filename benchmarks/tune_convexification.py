@@ -38,6 +38,7 @@ from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approxima
 from numpy import median
 from numpy.random import default_rng
 
+from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.test_outer_approximation_vs_enumeration import GLOBAL_OPTIMUM
