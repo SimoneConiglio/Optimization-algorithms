@@ -102,7 +102,7 @@ DIMENSION = 5
 BUDGET = 2500
 """The budget in equivalent objective evaluations."""
 
-SEEDS = (11, 101, 202, 303, 404, 505)
+SEEDS = (11, 101, 202)
 """The seeds of the starting points."""
 
 
@@ -244,7 +244,7 @@ def create_design_space(
     branching: int,
     levels: int,
     digits: list[list[int]],
-    weighting: str = "positional",
+    weighting: str = "unit",
 ) -> CatalogueDesignSpace:
     """Return the design space of a multi-resolution subdivision.
 
@@ -261,9 +261,11 @@ def create_design_space(
         branching: The number of subdivisions per level.
         levels: The number of levels.
         digits: The subdivision each level starts from, per component.
-        weighting: ``"positional"``, the default, to weigh a level by what a
-            digit of it is worth in the box index, or ``"flat"`` to weigh every
-            level alike, which the catalogue values would do on their own.
+        weighting: ``"unit"``, the default, to weigh every subdivision of every
+            level alike, so that the distance counts the digits a candidate
+            changes; ``"positional"`` to weigh a level by what a digit of it is
+            worth in the box index; ``"flat"`` to leave the weights at the
+            catalogue values, which weighs a digit by its own value.
 
     Note:
         Positional weights fix the **scale** of a level, and no weighting can
@@ -286,7 +288,9 @@ def create_design_space(
     )
     for level in range(1, levels + 1):
         weights = None
-        if weighting == "positional":
+        if weighting == "unit":
+            weights = ones(branching)
+        elif weighting == "positional":
             weights = arange(branching) * branching ** (levels - level)
 
         design_space.add_categorical_variable(
@@ -313,6 +317,9 @@ def max_step(
     Returns:
         The largest distance between two boxes.
     """
+    if weighting == "unit":
+        return dimension * levels
+
     if weighting == "positional":
         return dimension * (branching**levels - 1)
 
@@ -326,7 +333,7 @@ def run(
     budget: int,
     branching: int = 2,
     levels: int = 4,
-    weighting: str = "positional",
+    weighting: str = "unit",
     configuration: str = DEFAULT_CONFIGURATION,
 ) -> tuple[float, int]:
     """Run the method with one categorical variable per level.
@@ -421,11 +428,10 @@ def main() -> None:
             )
 
         for branching, levels, weighting in (
-            (2, 4, "flat"),
-            (2, 5, "flat"),
-            (4, 2, "flat"),
+            (2, 4, "unit"),
+            (2, 5, "unit"),
+            (4, 2, "unit"),
             (2, 4, "positional"),
-            (2, 5, "positional"),
         ):
             outcomes = [
                 run(problem, DIMENSION, seed, BUDGET, branching, levels, weighting)
