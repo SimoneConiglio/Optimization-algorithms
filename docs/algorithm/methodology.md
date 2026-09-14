@@ -199,13 +199,18 @@ do with where the candidate lands.
 
 ```{image} ../_static/figures/trust_region.svg
 :class: only-light
-:alt: What each radius of the trust region reaches, under either metric
+:alt: The same radius seen from a low incumbent and from a high one, under either metric
 ```
 
 ```{image} ../_static/figures/trust_region-dark.svg
 :class: only-dark
-:alt: What each radius of the trust region reaches, under either metric
+:alt: The same radius seen from a low incumbent and from a high one, under either metric
 ```
+
+The two rows are the same two radii seen from two incumbents. Under the
+catalogue values the region is the whole design space at $(1,1)$ and the
+incumbent alone at $(7,6)$; counting components it is the same nineteen boxes at
+both.
 
 So the design spaces of this package weigh **every subdivision alike**,
 $w_j \equiv 1$, and the distance becomes the number of components a candidate

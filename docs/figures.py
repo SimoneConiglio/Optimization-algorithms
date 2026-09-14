@@ -310,57 +310,66 @@ def draw_convexification(foreground: str):
 
 
 def draw_trust_region(foreground: str):
-    """Draw what the radius of the trust region reaches, under either metric."""
-    figure, axes_triple = plt.subplots(1, 3, figsize=(8.6, 3.3), sharey=True)
+    """Draw how each metric of the trust region depends on where the run sits."""
+    figure, axes_grid = plt.subplots(2, 2, figsize=(6.6, 6.4), sharex=True)
     indexes = arange(10)
-    incumbent = (7, 6)
-    panels = (
-        ("catalogue values, radius 10", "indexes", 10),
+    # The same two radii seen from a low incumbent and from a high one.
+    rows = (
+        ("catalogue values, radius 3", "indexes", 3),
         ("components changed, radius 1", "unit", 1),
-        ("components changed, radius 2", "unit", 2),
     )
-    for axes, (title, metric, radius) in zip(axes_triple, panels, strict=True):
-        for i in indexes:
-            for j in indexes:
-                if metric == "unit":
-                    # Every subdivision weighs one, so the cost of a candidate
-                    # is the number of components it changes.
-                    cost = (i != incumbent[0]) + (j != incumbent[1])
-                else:
-                    # The weight charged is the index the *incumbent* holds, so
-                    # leaving the first subdivision is free and leaving the last
-                    # one costs nine, wherever the candidate goes.
-                    cost = (i != incumbent[0]) * incumbent[0] + (
-                        j != incumbent[1]
-                    ) * incumbent[1]
+    incumbents = ((1, 1), (7, 6))
+    for axes_row, (label, metric, radius) in zip(axes_grid, rows, strict=True):
+        for axes, incumbent in zip(axes_row, incumbents, strict=True):
+            admitted = 0
+            for i in indexes:
+                for j in indexes:
+                    if metric == "unit":
+                        # Every subdivision weighs one, so a candidate pays one
+                        # per component it changes. int(), a sum of two NumPy
+                        # booleans being their disjunction rather than a count.
+                        cost = int(i != incumbent[0]) + int(j != incumbent[1])
+                    else:
+                        # The weight charged is the index the *incumbent* holds,
+                        # so what a move costs depends on where the run sits and
+                        # not on where it goes.
+                        cost = (
+                            int(i != incumbent[0]) * incumbent[0]
+                            + int(j != incumbent[1]) * incumbent[1]
+                        )
 
-                axes.add_patch(
-                    plt.Rectangle(
-                        (i - 0.5, j - 0.5),
-                        1.0,
-                        1.0,
-                        facecolor=SECOND if cost <= radius else "none",
-                        alpha=0.35 if cost <= radius else 1.0,
-                        edgecolor=foreground,
-                        linewidth=0.4,
+                    admitted += cost <= radius
+                    axes.add_patch(
+                        plt.Rectangle(
+                            (i - 0.5, j - 0.5),
+                            1.0,
+                            1.0,
+                            facecolor=SECOND if cost <= radius else "none",
+                            alpha=0.35 if cost <= radius else 1.0,
+                            edgecolor=foreground,
+                            linewidth=0.4,
+                        )
                     )
-                )
 
-        axes.plot(
-            [incumbent[0]], [incumbent[1]], marker="s", color=ACCENT, markersize=8
-        )
-        axes.set_xlim(-0.6, 9.6)
-        axes.set_ylim(-0.6, 9.6)
-        axes.set_aspect("equal")
-        axes.set_xlabel("box index of $x_1$")
-        axes.set_title(title, fontsize=9)
+            axes.plot(
+                [incumbent[0]], [incumbent[1]], marker="s", color=ACCENT, markersize=8
+            )
+            axes.set_xlim(-0.6, 9.6)
+            axes.set_ylim(-0.6, 9.6)
+            axes.set_aspect("equal")
+            axes.set_title(
+                f"incumbent {incumbent}: {admitted} of 100", fontsize=8.5, pad=4
+            )
 
-    axes_triple[0].set_ylabel("box index of $x_2$")
+        axes_row[0].set_ylabel(f"{label}\n\nbox index of $x_2$", fontsize=8.5)
+
+    for axes in axes_grid[1]:
+        axes.set_xlabel("box index of $x_1$", fontsize=8.5)
+
     figure.suptitle(
-        "The catalogue values charge where the incumbent sits, not how far "
-        "the candidate moves",
+        "The catalogue values make the region depend on where the run sits;\n"
+        "counting components makes it the same everywhere",
         fontsize=9.5,
-        y=1.02,
     )
     return figure
 
@@ -629,7 +638,10 @@ def draw_sampling(foreground: str):
         axes.set_aspect("equal")
 
     figure.supxlabel(
-        "the same budget on Rastrigin, the star marking the global optimum",
+        "Rastrigin in two dimensions, the same budget of 400 equivalent "
+        "evaluations offered to each,\nthe star marking the global optimum. "
+        "The count is what each method spent before stopping,\nnot what it was "
+        "allowed.",
         color=foreground,
         fontsize=8.5,
     )
@@ -660,8 +672,11 @@ def draw_results(foreground: str):
         "CMA-ES": (0, 0, 3, 3, 2, 2, 0, 0),
         "DIRECT": (3, 0, 3, 0, 3, 3, 0, 0),
     }
+    # The budget is 500 equivalent evaluations per design variable, so a bar
+    # reaching it is a run stopped by the budget rather than by itself.
+    budgets = tuple(500 * int(label.split()[-1]) for label in labels)
     colours = (ACCENT, SECOND, THIRD, "#868e96")
-    figure, axes = plt.subplots(figsize=(8.6, 3.4))
+    figure, axes = plt.subplots(figsize=(8.6, 3.6))
     positions = arange(len(labels))
     width = 0.2
     for index, (name, values) in enumerate(costs.items()):
@@ -669,7 +684,13 @@ def draw_results(foreground: str):
         bars = axes.bar(
             positions + offset, values, width, color=colours[index], label=name
         )
-        for bar, count in zip(bars, reached[name], strict=True):
+        for bar, count, cost, budget in zip(
+            bars, reached[name], values, budgets, strict=True
+        ):
+            if cost >= budget:
+                bar.set_hatch("///")
+                bar.set_edgecolor("white")
+
             if count:
                 axes.text(
                     bar.get_x() + bar.get_width() / 2,
@@ -679,6 +700,17 @@ def draw_results(foreground: str):
                     fontsize=6.5,
                     color=colours[index],
                 )
+
+    axes.text(
+        0.5,
+        -0.42,
+        "hatched: stopped by the budget, so the cost is the budget and the "
+        "gap an upper bound",
+        transform=axes.transAxes,
+        ha="center",
+        fontsize=7.5,
+        style="italic",
+    )
 
     axes.set_xticks(positions)
     axes.set_xticklabels(labels, rotation=20, ha="right")
@@ -690,6 +722,9 @@ def draw_results(foreground: str):
     axes.legend(ncols=4, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.10))
     return figure
 
+
+EXTENSIONS_BUDGET = 2500
+"""The budget of the comparison of the extensions."""
 
 EXTENSIONS = {
     "Rastrigin": {
@@ -741,6 +776,14 @@ def draw_extensions(foreground: str):
             axes = axes_grid[row][column]
             drawn = [0.0 if value is None else value for value in values]
             bars = axes.bar(positions, drawn, 0.68, color=colours)
+            if row == 1:
+                # A cost reaching the budget is a run the budget stopped, so its
+                # gap in the row above is an upper bound and not a result.
+                for bar, cost in zip(bars, costs, strict=True):
+                    if cost is not None and cost >= EXTENSIONS_BUDGET:
+                        bar.set_hatch("///")
+                        bar.set_edgecolor("white")
+
             for bar, value, count in zip(bars, values, reached, strict=True):
                 if value is None:
                     axes.text(
@@ -791,7 +834,8 @@ def draw_extensions(foreground: str):
 
     figure.suptitle(
         "Five variables, one budget of 2500, median over six starting points, "
-        "a tick per run reaching the optimum",
+        "a tick per run reaching the optimum;\nhatched costs are runs the budget "
+        "stopped, whose gap above is an upper bound",
         fontsize=9.5,
     )
     figure.tight_layout()

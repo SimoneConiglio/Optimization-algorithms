@@ -217,12 +217,12 @@ problem. This is reported upstream.
 
 ```{image} ../_static/figures/trust_region.svg
 :class: only-light
-:alt: What each radius of the trust region reaches, under either metric
+:alt: The same radius seen from a low incumbent and from a high one, under either metric
 ```
 
 ```{image} ../_static/figures/trust_region-dark.svg
 :class: only-dark
-:alt: What each radius of the trust region reaches, under either metric
+:alt: The same radius seen from a low incumbent and from a high one, under either metric
 ```
 
 The design spaces of this package now set every weight to one, which makes the
