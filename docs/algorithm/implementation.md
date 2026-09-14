@@ -255,7 +255,12 @@ at equal cost.
 - The one-hot layout of the design space and of the disciplines are
   cross-checked, so a disagreement cannot pass silently.
 - The Jacobian of `MultiResolutionMapping` is verified against finite
-  differences, and `locate` against `compute_bounds`: every box returned must
-  contain the value that selected it.
+  differences at **relaxed** one-hot values too, and `locate` against
+  `compute_bounds`: every box returned must contain the value that selected it,
+  and every box has the same width whichever it is.
+- The hierarchies are tested against a stub solver rather than a scenario, so
+  their contract is checked on its own: a descending shape nests and narrows,
+  the frontier does not nest, the cut model is defined at boxes never solved, and
+  a level returning no solved box ends the search.
 - The border-box degeneracy is pinned by a regression test that asserts both the
   broken behaviour without a margin and the correct one with it.
