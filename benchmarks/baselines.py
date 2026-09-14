@@ -40,14 +40,10 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Any
 
-from gemseo import create_scenario
 from gemseo.algos.design_space import DesignSpace
 from gemseo.algos.opt.factory import OptimizationLibraryFactory
 from gemseo.algos.optimization_problem import OptimizationProblem
-from gemseo.core.chains.chain import MDOChain
 from gemseo.core.mdo_functions.mdo_function import MDOFunction
-from gemseo.settings.formulations import DisciplinaryOpt_Settings
-from gemseo.settings.opt import SLSQP_Settings
 from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (  # noqa: E501
     BiLevelMasterOuterApproximation_Settings,
 )
@@ -59,11 +55,7 @@ from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import Counter
 from benchmarks.problems import Objective
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_normalized_box_design_space,
-)
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision import create_box_subdivision_scenario
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -271,21 +263,12 @@ def run_box_subdivision(
     design_space = _design_space(
         problem, dimension, _starting_point(problem, dimension, seed)
     )
-    subdivision = BoxSubdivision.from_design_space(
-        design_space, n_subdivisions or default_n_subdivisions(dimension)
-    )
-    scenario = create_scenario(
-        [MDOChain([BoxMapping(subdivision), Objective(counter, dimension)])],
+    scenario = create_box_subdivision_scenario(
+        [Objective(counter, dimension)],
         "f",
-        create_normalized_box_design_space(
-            subdivision,
-            design_space,
-            weights={} if weights is None else dict.fromkeys(["x"], weights),
-        ),
-        formulation_name="Benders",
-        main_problem_design_variables=["x_box"],
-        sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
-        sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
+        design_space,
+        n_subdivisions=n_subdivisions or default_n_subdivisions(dimension),
+        weights={} if weights is None else dict.fromkeys(["x"], weights),
     )
     settings = dict(CONFIGURATIONS[configuration])
     settings["max_step"] = TRUST_REGION_RADIUS

@@ -29,7 +29,7 @@ from numpy import full
 from numpy import ones
 from numpy import zeros
 
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

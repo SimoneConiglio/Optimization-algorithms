@@ -43,15 +43,13 @@ from numpy import argsort
 from numpy import asarray
 from numpy import ndarray  # noqa: TC002
 
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_box_samples,
-)
+from gemseo_box_subdivision.design_spaces import create_box_samples
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Sequence
 
-    from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+    from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 
 @dataclass(frozen=True)

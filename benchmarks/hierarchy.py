@@ -66,14 +66,12 @@ from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
 from benchmarks.problems import Objective
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_normalized_box_design_space,
-)
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_box_subdivision.algos.opt.hierarchy import RANKINGS
-from gemseo_box_subdivision.algos.opt.hierarchy import compute_cut_model
-from gemseo_box_subdivision.algos.opt.hierarchy import read_solved_boxes
+from gemseo_box_subdivision.design_spaces import create_normalized_box_design_space
 from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision.hierarchy import RANKINGS
+from gemseo_box_subdivision.hierarchy import compute_cut_model
+from gemseo_box_subdivision.hierarchy import read_solved_boxes
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 if TYPE_CHECKING:
     from numpy import ndarray

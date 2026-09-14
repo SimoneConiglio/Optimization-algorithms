@@ -9,26 +9,40 @@
 
 # API reference
 
-## Design spaces
+Everything below is re-exported from the top-level `gemseo_box_subdivision`
+namespace, which is what user code should import from.
+
+## The entry point
 
 ```{eval-rst}
 .. autosummary::
    :toctree: _autosummary
    :recursive:
 
-   gemseo_box_subdivision.algos.design_space.box_subdivision
-   gemseo_box_subdivision.algos.design_space.box_design_space
-   gemseo_box_subdivision.algos.design_space.multi_resolution
+   gemseo_box_subdivision.scenario
+   gemseo_box_subdivision.settings
 ```
 
-## Algorithms
+## Subdivisions
 
 ```{eval-rst}
 .. autosummary::
    :toctree: _autosummary
    :recursive:
 
-   gemseo_box_subdivision.algos.opt.hierarchy
+   gemseo_box_subdivision.subdivisions.box
+   gemseo_box_subdivision.subdivisions.multi_resolution
+   gemseo_box_subdivision.design_spaces
+```
+
+## Hierarchies
+
+```{eval-rst}
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   gemseo_box_subdivision.hierarchy
 ```
 
 ## Disciplines

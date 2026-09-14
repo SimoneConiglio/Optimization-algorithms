@@ -28,9 +28,7 @@ if TYPE_CHECKING:
 
     from gemseo.typing import StrKeyMapping
 
-    from gemseo_box_subdivision.algos.design_space.multi_resolution import (
-        MultiResolution,
-    )
+    from gemseo_box_subdivision.subdivisions.multi_resolution import MultiResolution
 
 
 class MultiResolutionMapping(Discipline):

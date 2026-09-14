@@ -24,14 +24,14 @@ from numpy import array
 from numpy import full
 from numpy import zeros
 
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_box_subdivision.algos.opt.hierarchy import RANKINGS
-from gemseo_box_subdivision.algos.opt.hierarchy import SHAPES
-from gemseo_box_subdivision.algos.opt.hierarchy import SolvedBox
-from gemseo_box_subdivision.algos.opt.hierarchy import compute_cut_model
-from gemseo_box_subdivision.algos.opt.hierarchy import refine_deep
-from gemseo_box_subdivision.algos.opt.hierarchy import refine_frontier
-from gemseo_box_subdivision.algos.opt.hierarchy import refine_two_levels
+from gemseo_box_subdivision.hierarchy import RANKINGS
+from gemseo_box_subdivision.hierarchy import SHAPES
+from gemseo_box_subdivision.hierarchy import SolvedBox
+from gemseo_box_subdivision.hierarchy import compute_cut_model
+from gemseo_box_subdivision.hierarchy import refine_deep
+from gemseo_box_subdivision.hierarchy import refine_frontier
+from gemseo_box_subdivision.hierarchy import refine_two_levels
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 
 def _subdivision(lower, upper, n_subdivisions: int) -> BoxSubdivision:

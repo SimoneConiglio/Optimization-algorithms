@@ -22,7 +22,7 @@ from numpy import array
 from numpy import inf
 from numpy.testing import assert_allclose
 
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 
 @pytest.fixture

@@ -21,10 +21,10 @@ from numpy import array
 from numpy.random import default_rng
 from numpy.testing import assert_allclose
 
-from gemseo_box_subdivision.algos.design_space.multi_resolution import MultiResolution
 from gemseo_box_subdivision.disciplines.multi_resolution_mapping import (
     MultiResolutionMapping,
 )
+from gemseo_box_subdivision.subdivisions.multi_resolution import MultiResolution
 
 
 @pytest.fixture

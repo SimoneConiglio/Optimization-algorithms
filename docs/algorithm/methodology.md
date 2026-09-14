@@ -216,7 +216,7 @@ So the design spaces of this package weigh **every subdivision alike**,
 $w_j \equiv 1$, and the distance becomes the number of components a candidate
 changes, that is the Hamming distance between the two one-hot encodings. The
 diameter is then $n$, which
-{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
+{py:attr}`~gemseo_box_subdivision.subdivisions.box.BoxSubdivision.max_step`
 returns, and that is the radius at which the region stops constraining, not the
 radius to use.
 

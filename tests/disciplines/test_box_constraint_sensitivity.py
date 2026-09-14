@@ -34,8 +34,8 @@ from numpy import cos
 from numpy import sin
 from numpy import zeros
 
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
 from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 # A multimodal objective on [0, 1], increasing at x = 0.
 OBJECTIVE = lambda x: sin(6.0 * x[0]) + 0.3 * (x[0] - 0.4) ** 2  # noqa: E731

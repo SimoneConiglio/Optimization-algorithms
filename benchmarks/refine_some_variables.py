@@ -58,11 +58,9 @@ from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_normalized_box_design_space,
-)
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.design_spaces import create_normalized_box_design_space
 from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 if TYPE_CHECKING:
     from benchmarks.problems import Problem

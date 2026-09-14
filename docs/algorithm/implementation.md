@@ -16,7 +16,7 @@ into a `Benders` scenario, as shown in [Usage](usage.md).
 
 ## The subdivision
 
-{py:class}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision`
+{py:class}`~gemseo_box_subdivision.subdivisions.box.BoxSubdivision`
 describes the Cartesian subdivision: per variable, the lower and upper bounds of
 each subdivision of each component, shaped `(size, n_subdivisions)`.
 
@@ -116,11 +116,11 @@ $\xi$ while the disciplines keep receiving $x$.
 Both levels live in one `CatalogueDesignSpace`, which the `Benders` formulation
 splits on its own by keeping the categorical variables in the main problem:
 
-{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_box_design_space`
+{py:func}`~gemseo_box_subdivision.design_spaces.create_box_design_space`
 : the original variables with widened bounds, plus one categorical variable per
   subdivided variable. For the constraint formulation.
 
-{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_normalized_box_design_space`
+{py:func}`~gemseo_box_subdivision.design_spaces.create_normalized_box_design_space`
 : the normalized variables bounded by $0$ and $1$, plus the same categorical
   variables. For the normalized formulation.
 
@@ -131,7 +131,7 @@ containing the initial value of the design space.
 
 ## Enumerating the boxes
 
-{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_box_samples`
+{py:func}`~gemseo_box_subdivision.design_spaces.create_box_samples`
 returns the one-hot vector of every box. Passing them to the `CustomDOE` driver
 of the main problem solves the sub-problem of every box, which is the reference
 the method has to beat — and, being a driver of the same problem, makes the
@@ -145,9 +145,9 @@ copying a benchmark.
 
 ### Subdividing some of the variables only
 
-{py:meth}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.from_design_space`
+{py:meth}`~gemseo_box_subdivision.subdivisions.box.BoxSubdivision.from_design_space`
 takes the variables to subdivide, and
-{py:func}`~gemseo_box_subdivision.algos.design_space.box_design_space.create_normalized_box_design_space`
+{py:func}`~gemseo_box_subdivision.design_spaces.create_normalized_box_design_space`
 keeps the others as they are, so a variable left out of the subdivision stays an
 ordinary variable of the sub-problem, solved by the local solver at every box:
 
@@ -160,7 +160,7 @@ and the master carries binaries for them alone.
 
 ### The multi-resolution encoding
 
-{py:class}`~gemseo_box_subdivision.algos.design_space.multi_resolution.MultiResolution`
+{py:class}`~gemseo_box_subdivision.subdivisions.multi_resolution.MultiResolution`
 is the counterpart of `BoxSubdivision` for a box chosen by one categorical
 variable per level, and
 {py:class}`~gemseo_box_subdivision.disciplines.multi_resolution_mapping.MultiResolutionMapping`
@@ -191,19 +191,19 @@ rather than what those digits are worth.
 
 ### The radius of the trust region
 
-{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
+{py:attr}`~gemseo_box_subdivision.subdivisions.box.BoxSubdivision.max_step`
 returns the radius at which the region stops constraining the master, which with
 unit catalogue weights is the number of subdivided components. It is a property
 of the subdivision rather than a setting, and its docstring records that it is
 **not** the radius to use.
-{py:attr}`~gemseo_box_subdivision.algos.design_space.multi_resolution.MultiResolution.max_step`
+{py:attr}`~gemseo_box_subdivision.subdivisions.multi_resolution.MultiResolution.max_step`
 returns the same quantity for the multi-resolution encoding, which has one
 one-hot group per level per component and therefore a radius scaled by the number
 of levels.
 
 ### The hierarchies
 
-{py:mod}`~gemseo_box_subdivision.algos.opt.hierarchy` holds the scoring rules and
+{py:mod}`~gemseo_box_subdivision.hierarchy` holds the scoring rules and
 the three shapes. A shape is a **loop around the method** rather than a change to
 it, so it is driven by a callable that solves one level and reports the boxes it
 solved, leaving the caller its own scenario and its own accounting of the budget:
@@ -221,22 +221,22 @@ Returning **no solved box** ends the search, which is how a caller reports that
 its budget is spent or that its master became infeasible. Each shape returns the
 bounds of every region it visited.
 
-{py:func}`~gemseo_box_subdivision.algos.opt.hierarchy.read_solved_boxes`
+{py:func}`~gemseo_box_subdivision.hierarchy.read_solved_boxes`
 : reads back the value and the post-optimal sensitivity of every box a master
   solved, from the database of its problem, as
-  {py:class}`~gemseo_box_subdivision.algos.opt.hierarchy.SolvedBox` records.
+  {py:class}`~gemseo_box_subdivision.hierarchy.SolvedBox` records.
 
-{py:func}`~gemseo_box_subdivision.algos.opt.hierarchy.compute_cut_model`
+{py:func}`~gemseo_box_subdivision.hierarchy.compute_cut_model`
 : evaluates the cuts of a master over **every** box of its subdivision, including
   those it never solved, which is what lets a ranking propose an unvisited box.
 
 `rank_by_value`, `rank_by_cuts`, `rank_mixed`
 : the three rules, collected in
-  {py:data}`~gemseo_box_subdivision.algos.opt.hierarchy.RANKINGS`.
+  {py:data}`~gemseo_box_subdivision.hierarchy.RANKINGS`.
 
 `refine_deep`, `refine_two_levels`, `refine_frontier`
 : the three shapes, collected in
-  {py:data}`~gemseo_box_subdivision.algos.opt.hierarchy.SHAPES`. Only the
+  {py:data}`~gemseo_box_subdivision.hierarchy.SHAPES`. Only the
   frontier can return to a box it passed over, holding a priority queue of open
   boxes from every level.
 

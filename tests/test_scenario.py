@@ -1,0 +1,184 @@
+# Copyright 2026 Simone Coniglio
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License version 3 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""Tests for the entry point building a box-subdivision scenario."""
+
+from __future__ import annotations
+
+import pytest
+from gemseo.algos.design_space import DesignSpace
+from gemseo.core.discipline import Discipline
+from numpy import array
+from numpy import cos
+from numpy import pi
+from numpy import sin
+from numpy import zeros
+
+from gemseo_box_subdivision import BoxSubdivisionSettings
+from gemseo_box_subdivision import MultiResolution
+from gemseo_box_subdivision import create_box_subdivision_scenario
+from gemseo_box_subdivision import execute_box_subdivision_scenario
+
+
+class Rastrigin(Discipline):
+    """Rastrigin over a design variable of any name."""
+
+    def __init__(self, name: str = "x", size: int = 2) -> None:
+        super().__init__()
+        self.__name = name
+        self.__size = size
+        self.io.input_grammar.update_from_data({name: zeros(size)})
+        self.io.output_grammar.update_from_data({"f": zeros(1)})
+        self.default_input_data = {name: zeros(size)}
+
+    def _run(self, input_data):  # noqa: ANN001, ANN202
+        x = input_data[self.__name]
+        return {
+            "f": array([10.0 * self.__size + (x**2 - 10.0 * cos(2 * pi * x)).sum()])
+        }
+
+    def _compute_jacobian(self, input_names=(), output_names=()) -> None:  # noqa: ANN001
+        self._init_jacobian(input_names, output_names)
+        x = self.io.data[self.__name]
+        self.jac["f"][self.__name] = (2 * x + 20 * pi * sin(2 * pi * x)).reshape(1, -1)
+
+
+def design_space(name: str = "x", size: int = 2) -> DesignSpace:
+    """Return a design space holding one variable."""
+    space = DesignSpace()
+    space.add_variable(
+        name, lower_bound=-4.1, upper_bound=5.9, size=size, value=zeros(size)
+    )
+    return space
+
+
+def best(scenario) -> float:  # noqa: ANN001
+    """Return the best objective value in the database of a scenario."""
+    database = scenario.formulation.optimization_problem.database
+    return min(float(v["f"]) for v in database.values() if "f" in v)
+
+
+@pytest.mark.parametrize("name", ["x", "thickness"])
+def test_the_master_variables_follow_the_design_space(name) -> None:
+    """The one-hot names must be derived, never assumed to be ``x_box``."""
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin(name)], "f", design_space(name), n_subdivisions=4
+    )
+    assert f"{name}_box" in scenario.formulation.design_space
+
+
+def test_subdividing_some_variables_only() -> None:
+    """A variable left out must stay an ordinary variable of the sub-problem."""
+    space = design_space("a")
+    space.add_variable("b", lower_bound=0.0, upper_bound=1.0, size=1, value=0.5)
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin("a")], "f", space, n_subdivisions=4, variable_names=["a"]
+    )
+    assert scenario.subdivision.variable_names == ("a",)
+    assert "b_box" not in scenario.formulation.design_space
+
+
+def test_the_defaults_solve_rastrigin() -> None:
+    """The entry point must solve the benchmark problem out of the box."""
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=10
+    )
+    execute_box_subdivision_scenario(scenario)
+    assert best(scenario) == pytest.approx(0.0, abs=1e-4)
+
+
+def test_the_constraint_formulation_declares_its_constraint() -> None:
+    """The constraint formulation must wire its adapter and its constraint.
+
+    Both live on the sub-problem: the box is enforced there, and the adapter is
+    what places its starting point inside the box.
+    """
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=4, formulation="constraint"
+    )
+    adapter = scenario.formulation.sub_problem_scenario_adapter
+    assert type(adapter).__name__ == "BoxStartScenarioAdapter"
+    problem = adapter.scenario.formulation.optimization_problem
+    assert problem.constraints.get_names() == ["g_box"]
+
+
+def test_the_normalized_formulation_needs_neither() -> None:
+    """The normalized formulation must need no adapter and no box constraint."""
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=4
+    )
+    adapter = scenario.formulation.sub_problem_scenario_adapter
+    assert type(adapter).__name__ == "MDOScenarioAdapterBenders"
+    problem = adapter.scenario.formulation.optimization_problem
+    assert problem.constraints.get_names() == []
+
+
+def test_levels_build_a_multi_resolution_subdivision() -> None:
+    """Above one level the encoding must be the multi-resolution one."""
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=4, levels=2
+    )
+    assert isinstance(scenario.subdivision, MultiResolution)
+    assert scenario.subdivision.resolution == 16
+    # One categorical variable per level per subdivided variable.
+    assert "x_level_1_box" in scenario.formulation.design_space
+    assert "x_level_2_box" in scenario.formulation.design_space
+
+
+def test_an_unknown_formulation_is_refused() -> None:
+    """Check the error raised for an unknown formulation."""
+    with pytest.raises(ValueError, match="normalized"):
+        create_box_subdivision_scenario(
+            [Rastrigin()], "f", design_space(), formulation="other"
+        )
+
+
+def test_the_levels_refuse_the_constraint_formulation() -> None:
+    """Check the error raised for a combination that is not supported."""
+    with pytest.raises(ValueError, match="normalized formulation only"):
+        create_box_subdivision_scenario(
+            [Rastrigin()], "f", design_space(), levels=2, formulation="constraint"
+        )
+
+
+def test_the_mechanisms_cannot_be_combined() -> None:
+    """Whichever mechanism is chosen, the other constant must be switched off."""
+    adaptive = BoxSubdivisionSettings().to_master_settings()
+    assert adaptive["adapt"] is True
+    assert adaptive["convexification_constant"] == 0.0
+
+    convex = BoxSubdivisionSettings(mechanism="convexification").to_master_settings()
+    assert convex["adapt"] is False
+    assert convex["min_dfk"] == 0.0
+    assert convex["convexification_constant"] > 0.0
+
+
+def test_an_unknown_mechanism_is_refused() -> None:
+    """Check the error raised for an unknown mechanism."""
+    with pytest.raises(ValueError, match="mechanism must be one of"):
+        BoxSubdivisionSettings(mechanism="magic")
+
+
+@pytest.mark.parametrize("name", ["trust_region_radius", "n_parallel_points"])
+def test_positive_counts(name) -> None:
+    """Check the error raised for a non-positive count."""
+    with pytest.raises(ValueError, match=name):
+        BoxSubdivisionSettings(**{name: 0})
+
+
+def test_the_radius_is_scaled_by_the_levels() -> None:
+    """The radius must count variables, not digits, whatever the encoding."""
+    settings = BoxSubdivisionSettings(trust_region_radius=2)
+    assert settings.to_master_settings()["max_step"] == 2
+    assert settings.to_master_settings(radius=2 * 3)["max_step"] == 6

@@ -26,7 +26,7 @@ from gemseo_bilevel_outer_approximation.disciplines.scenario_adapters.mdo_scenar
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+    from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 
 def create_box_start_adapter_class(

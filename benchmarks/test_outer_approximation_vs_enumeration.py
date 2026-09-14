@@ -58,21 +58,15 @@ from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import RASTRIGIN_LOWER_BOUND
 from benchmarks.problems import RASTRIGIN_UPPER_BOUND
 from benchmarks.problems import Rastrigin
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_box_design_space,
-)
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_box_samples,
-)
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_normalized_box_design_space,
-)
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
+from gemseo_box_subdivision.design_spaces import create_box_design_space
+from gemseo_box_subdivision.design_spaces import create_box_samples
+from gemseo_box_subdivision.design_spaces import create_normalized_box_design_space
 from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
 from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 from gemseo_box_subdivision.disciplines.scenario_adapters.box_start import (
     create_box_start_adapter_class,
 )
+from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 
 FORMULATIONS = ("constraint", "normalized")
 """The two ways of confining the sub-problem to its box."""

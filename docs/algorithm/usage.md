@@ -12,146 +12,74 @@
 Both formulations build an ordinary GEMSEO scenario with the `Benders`
 formulation, and are solved by the `BiLevelMasterOuterApproximation` algorithm.
 
-## Normalized formulation
+## The entry point
 
-The recommended one: fewer moving parts, and the better explorer on the
-benchmark.
+One call builds the scenario, one executes it:
 
 ```python
-from gemseo import create_scenario
 from gemseo.algos.design_space import DesignSpace
-from gemseo.core.chains.chain import MDOChain
-from gemseo.settings.formulations import DisciplinaryOpt_Settings
-from gemseo.settings.opt import SLSQP_Settings
-from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (
-    BiLevelMasterOuterApproximation_Settings,
-)
 
-from gemseo_box_subdivision.algos.design_space.box_design_space import (
-    create_normalized_box_design_space,
+from gemseo_box_subdivision import (
+    create_box_subdivision_scenario,
+    execute_box_subdivision_scenario,
 )
-from gemseo_box_subdivision.algos.design_space.box_subdivision import BoxSubdivision
-from gemseo_box_subdivision.disciplines.box_mapping import BoxMapping
 
 design_space = DesignSpace()
 design_space.add_variable("x", lower_bound=-4.1, upper_bound=5.9, size=2, value=0.0)
 
-subdivision = BoxSubdivision.from_design_space(design_space, 10)
+scenario = create_box_subdivision_scenario(
+    [objective_discipline], "f", design_space, n_subdivisions=10
+)
+execute_box_subdivision_scenario(scenario)
+```
 
-scenario = create_scenario(
-    [MDOChain([BoxMapping(subdivision), objective_discipline])],
+What this owns, so that you cannot get it wrong: chaining the mapping **before**
+the objective discipline, building the design space from the **same**
+subdivision, naming the one-hot variables the master optimizes over after your
+design variables rather than after a literal, selecting the `Benders`
+formulation, and sizing the trust region in components changed. None of those is
+a decision; every one of them is a way to produce a silently wrong run.
+
+The result is an ordinary GEMSEO scenario. `scenario.subdivision` is the
+subdivision it built, and everything else about it works as usual.
+
+## The settings that are yours to choose
+
+Two, and neither has a default that transfers between problems:
+
+```python
+from gemseo_box_subdivision import BoxSubdivisionSettings
+
+scenario = create_box_subdivision_scenario(
+    [objective_discipline],
     "f",
-    create_normalized_box_design_space(subdivision, design_space),
-    formulation_name="Benders",
-    main_problem_design_variables=["x_box"],
-    sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
-    sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
-)
-scenario.execute(
-    BiLevelMasterOuterApproximation_Settings(
-        max_iter=80,
-        ub_tol=1e-4,
-        adapt=True,
-        min_dfk=100.0,
-        number_of_parallel_points=4,
-        max_step=2,
-    )
+    design_space,
+    n_subdivisions=10,
+    settings=BoxSubdivisionSettings(
+        convexity_margin=80.0,  # in the units of *your* objective
+        trust_region_radius=2,  # in components changed
+    ),
 )
 ```
 
-`BoxMapping` is chained **before** the objective discipline, so the sub-problem
-solves for `x_normalized` while the objective keeps receiving `x`.
+`convexity_margin` is subtracted from an objective difference, so it is absolute
+and in the units of the objective. Start from the variation of the objective over
+the design space; it crosses a threshold and then saturates, so erring high costs
+sub-problems rather than quality.
 
-## Constraint formulation
+`n_subdivisions` has to resolve the basins of the landscape and keep the binaries
+below the sub-problems a budget can pay for, and refining past the basins makes
+things worse rather than merely slower, see
+[the benchmark](benchmark.md#the-density-of-the-subdivision-decides).
+
+The other mechanism is selected, never mixed:
 
 ```python
-from gemseo_box_subdivision.algos.design_space.box_design_space import create_box_design_space
-from gemseo_box_subdivision.disciplines.box_constraint import BoxConstraint
-from gemseo_box_subdivision.disciplines.scenario_adapters.box_start import (
-    create_box_start_adapter_class,
-)
-
-scenario = create_scenario(
-    [objective_discipline, BoxConstraint(subdivision)],
-    "f",
-    create_box_design_space(subdivision, design_space),
-    formulation_name="Benders",
-    main_problem_design_variables=["x_box"],
-    sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
-    sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
-    scenario_adapter_cls=create_box_start_adapter_class(subdivision),
-)
-scenario.formulation.add_constraint(BoxConstraint.DEFAULT_OUTPUT_NAME)
+BoxSubdivisionSettings(mechanism="convexification", convexification_constant=50.0)
 ```
 
-The two extra pieces, the adapter and the explicit constraint, are what the
-normalized formulation makes unnecessary.
-
-## Constraints of the original problem
-
-A box may contain no point satisfying the original constraints. Declare such a
-constraint with `main_level=True` so an infeasible sub-problem produces a
-feasibility cut instead of stalling the master:
-
-```python
-scenario.formulation.add_constraint("g", main_level=True)
-```
-
-## Enumerating the boxes instead
-
-The same scenario, driven exhaustively, which is the reference to compare
-against:
-
-```python
-from gemseo.algos.doe.factory import DOELibraryFactory
-
-from gemseo_box_subdivision.algos.design_space.box_design_space import create_box_samples
-
-DOELibraryFactory().execute(
-    scenario.formulation.optimization_problem,
-    algo_name="CustomDOE",
-    samples=create_box_samples(subdivision),
-)
-```
-
-## Settings that matter
-
-:::{warning}
-Left to their defaults, the master's two safeguards are both off: the cuts are
-then invalid on a multimodal problem, the master converges after two or three
-sub-problems and reports success on a point far from the optimum. One of them
-**must** be set, see [Convexification](methodology.md#convexification).
-:::
-
-The master offers **two different mechanisms** against the non-convexity of the
-relaxed problem, and they are not meant to be combined:
-
-`adaptive`
-: `adapt=True` with a convexity margin `min_dfk`, the constant left at zero. The
-  master repairs its cut slopes against the boxes it has already solved. This is
-  the recommended configuration.
-
-`pure_convexification`
-: `adapt=False` with `convexification_constant` $\kappa > 0$, the margin left at
-  zero. The master adds $\kappa\, C(\alpha)$ to the relaxed problem, which is the
-  configuration carrying the convergence guarantee, at the price of a lower bound
-  degraded by $\kappa$, see [annex C](tuning.md#the-master-has-two-mechanisms-and-they-must-not-be-combined).
-
-| Setting | Recommended | Why |
-|---------|-------------|-----|
-| `adapt` | `True` | repairs the cut slopes against the boxes already solved |
-| `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
-| `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [annex C](tuning.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
-| `number_of_parallel_points` | $4$ | the master probes one radius per point, so that a feasible master stays available. A single point still works, from six starting points out of eight against eight; eight points are as reliable as four and nearly twice as expensive |
-| `max_step` | $2$ | the radius of the trust region of the master, counted in **components changed**, the design spaces of this package weighing every subdivision alike. Keep it small: widening it to {py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`, where the region stops constraining, loses Rastrigin at five variables, and removing the region is worse still, see [annex C](tuning.md#how-wide-the-radius-should-be) |
-| `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
-| `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
-
-And one choice that is not a setting of the algorithm but of the subdivision:
-
-| Choice | Recommended | Why |
-|--------|-------------|-----|
-| `n_subdivisions` | fine enough to resolve the basins, over the variables the objective is multimodal in | a box that still holds several basins defeats the local solve, and the number of boxes costs evaluations rather than master size, the binaries growing linearly. See [the benchmark](benchmark.md#the-density-of-the-subdivision-decides) |
+Choosing one switches the other's constant off, so a run always measures one
+mechanism rather than an average of two.
 
 ## Which methodology to set up
 
@@ -181,7 +109,9 @@ variables to subdivide, and the others stay ordinary variables of the
 sub-problem:
 
 ```python
-subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
+create_box_subdivision_scenario(
+    [discipline], "f", design_space, n_subdivisions=10, variable_names=["x_split"]
+)
 ```
 
 This is worth it when the objective is close to unimodal in the variables left
@@ -200,46 +130,12 @@ $L$ levels of $m$ subdivisions reach $m^L$ subdivisions per component for
 $n m L$ binaries, and the whole thing stays in a single master.
 
 ```python
-from numpy import array
-
-from gemseo_box_subdivision.algos.design_space.multi_resolution import MultiResolution
-from gemseo_box_subdivision.disciplines.multi_resolution_mapping import (
-    MultiResolutionMapping,
-)
-
-subdivision = MultiResolution(
-    {"x": array([-4.1, -4.1])},
-    {"x": array([5.9, 5.9])},
-    branching=4,
-    levels=2,
-)
-subdivision.resolution  # 16 subdivisions per component
-subdivision.n_binaries  # 16, against the 80 a flat subdivision would need
-subdivision.n_boxes  # 256
-
-scenario = create_scenario(
-    [MDOChain([MultiResolutionMapping(subdivision), objective_discipline])],
+create_box_subdivision_scenario(
+    [objective_discipline],
     "f",
-    subdivision.create_design_space(),
-    formulation_name="Benders",
-    main_problem_design_variables=[
-        subdivision.get_one_hot_name("x", level)
-        for level in range(1, subdivision.levels + 1)
-    ],
-    sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
-    sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
-)
-scenario.execute(
-    BiLevelMasterOuterApproximation_Settings(
-        max_iter=80,
-        ub_tol=1e-4,
-        adapt=True,
-        min_dfk=100.0,
-        number_of_parallel_points=4,
-        # One one-hot group per level per variable, so two whole variables is
-        # 2 * levels groups, not 2.
-        max_step=2 * subdivision.levels,
-    )
+    design_space,
+    n_subdivisions=4,  # the branching of a level
+    levels=2,  # a resolution of 4 ** 2 = 16 per component
 )
 ```
 
@@ -251,7 +147,7 @@ is, and the objective keeps receiving `x` under its own name.
 one-hot groups a candidate changes and this encoding has $nL$ of them, so the
 radius of two that suits a flat subdivision would let the master move two
 **digits** rather than two variables. Leaving it at
-{py:attr}`~gemseo_box_subdivision.algos.design_space.multi_resolution.MultiResolution.max_step`,
+{py:attr}`~gemseo_box_subdivision.subdivisions.multi_resolution.MultiResolution.max_step`,
 where the region stops constraining, is markedly worse still.
 :::
 
@@ -298,7 +194,7 @@ scenario and your own accounting of the budget, and return **no solved box** whe
 that budget is spent.
 
 ```python
-from gemseo_box_subdivision.algos.opt.hierarchy import read_solved_boxes, refine_deep
+from gemseo_box_subdivision.hierarchy import read_solved_boxes, refine_deep
 
 
 def solve(lower, upper, n_subdivisions):
@@ -349,6 +245,33 @@ need is resolution rather than a change of region, the multi-resolution encoding
 above keeps every level in one master and discards nothing.
 :::
 
+## Constraints of the original problem
+
+A box may contain no point satisfying the original constraints. Declare such a
+constraint with `main_level=True` so an infeasible sub-problem produces a
+feasibility cut instead of stalling the master:
+
+```python
+scenario.formulation.add_constraint("g", main_level=True)
+```
+
+## Enumerating the boxes instead
+
+The same scenario, driven exhaustively, which is the reference to compare
+against:
+
+```python
+from gemseo.algos.doe.factory import DOELibraryFactory
+
+from gemseo_box_subdivision.design_spaces import create_box_samples
+
+DOELibraryFactory().execute(
+    scenario.formulation.optimization_problem,
+    algo_name="CustomDOE",
+    samples=create_box_samples(subdivision),
+)
+```
+
 ## Applying this to a new problem
 
 The order below is the one the measurements support, and it is deliberately not
@@ -377,3 +300,48 @@ each separately, and the budget question is worth settling too: a run whose cost
 equals its budget was stopped rather than finished, so raise the budget until the
 cost stops moving before comparing anything, see
 [the results](benchmark.md#does-more-budget-change-the-answer).
+## Composing it by hand
+
+The classes underneath stay public, and
+[the implementation](implementation.md) describes them. Use them when you need a
+composition the entry point does not cover; otherwise prefer the entry point,
+which is what the tests and the benchmarks use.
+
+### The settings of the master, in their own terms
+
+:::{warning}
+Left to their defaults, the master's two safeguards are both off: the cuts are
+then invalid on a multimodal problem, the master converges after two or three
+sub-problems and reports success on a point far from the optimum. One of them
+**must** be set, see [Convexification](methodology.md#convexification).
+:::
+
+The master offers **two different mechanisms** against the non-convexity of the
+relaxed problem, and they are not meant to be combined:
+
+`adaptive`
+: `adapt=True` with a convexity margin `min_dfk`, the constant left at zero. The
+  master repairs its cut slopes against the boxes it has already solved. This is
+  the recommended configuration.
+
+`pure_convexification`
+: `adapt=False` with `convexification_constant` $\kappa > 0$, the margin left at
+  zero. The master adds $\kappa\, C(\alpha)$ to the relaxed problem, which is the
+  configuration carrying the convergence guarantee, at the price of a lower bound
+  degraded by $\kappa$, see [annex C](tuning.md#the-master-has-two-mechanisms-and-they-must-not-be-combined).
+
+| Setting | Recommended | Why |
+|---------|-------------|-----|
+| `adapt` | `True` | repairs the cut slopes against the boxes already solved |
+| `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
+| `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [annex C](tuning.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
+| `number_of_parallel_points` | $4$ | the master probes one radius per point, so that a feasible master stays available. A single point still works, from six starting points out of eight against eight; eight points are as reliable as four and nearly twice as expensive |
+| `max_step` | $2$ | the radius of the trust region of the master, counted in **components changed**, the design spaces of this package weighing every subdivision alike. Keep it small: widening it to {py:attr}`~gemseo_box_subdivision.subdivisions.box.BoxSubdivision.max_step`, where the region stops constraining, loses Rastrigin at five variables, and removing the region is worse still, see [annex C](tuning.md#how-wide-the-radius-should-be) |
+| `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
+| `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
+
+And one choice that is not a setting of the algorithm but of the subdivision:
+
+| Choice | Recommended | Why |
+|--------|-------------|-----|
+| `n_subdivisions` | fine enough to resolve the basins, over the variables the objective is multimodal in | a box that still holds several basins defeats the local solve, and the number of boxes costs evaluations rather than master size, the binaries growing linearly. See [the benchmark](benchmark.md#the-density-of-the-subdivision-decides) |
