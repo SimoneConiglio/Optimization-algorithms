@@ -209,13 +209,24 @@ and the sweeps behind them are in [annex C](tuning.md).
 
 **Subdividing some variables only** wins where the multimodality is concentrated
 and loses where it is not, which is the requirement of the method restated: a
-variable left out keeps all of its basins inside every box.
+variable left out keeps all of its basins inside every box. On Styblinski-Tang,
+multimodal in every variable, leaving three of the five out takes a run from two
+starting points out of three to none.
 
-| subdivision of `partly_multimodal` | boxes | gap | reached |
-|------------------------------------|-------|-----|---------|
-| all 5 variables, $m=2$ | 32 | $1.99$ | 0/3 |
-| 2 variables, $m=10$ | 100 | **$0.00$** | **3/3** |
-| 2 variables, $m=5$ | 25 | $1.99$ | 0/3 |
+| subdivision of `partly_multimodal` | boxes | binaries | gap | cost | reached |
+|------------------------------------|-------|----------|-----|------|---------|
+| all 5 variables, $m=2$ | 32 | 10 | $1.99$ | 540 | 0/3 |
+| **3 variables, $m=4$** | 64 | **12** | **$0.00$** | **773** | **3/3** |
+| 2 variables, $m=10$ | 100 | 20 | **$0.00$** | 858 | **3/3** |
+| 2 variables, $m=5$ | 25 | 10 | $1.99$ | 620 | 0/3 |
+| 1 variable, $m=10$ | 10 | 10 | $3.98$ | 419 | 0/3 |
+
+The cheapest configuration that works is **not** the one matching the
+multimodality exactly. `partly_multimodal` is Rastrigin in two variables and a
+paraboloid in three, yet splitting *three* variables into four beats splitting
+the two into ten, $773$ evaluations against $858$: twelve binaries against
+twenty, and the extra variable costs nothing to subdivide because it is unimodal
+in every box. The binaries govern here as everywhere else.
 
 **The multi-resolution encoding**, one categorical variable per level with the
 box index read off as its base-$m$ digits, is the one construction here that

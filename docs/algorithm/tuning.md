@@ -163,8 +163,11 @@ The Upper bound stopped changing for 10 iterations.
 
 `upper_bound_stall` defaults to ten: the master gives up after ten iterations
 that do not improve the incumbent, whatever its lower bound says. With one box
-solved per iteration, that alone caps a run near twenty boxes out of a hundred,
-which is exactly where the table above saturates.
+solved per iteration, that alone caps a run at a few dozen boxes out of a
+hundred, which is what the
+[comparison against the enumeration](benchmark.md#against-the-enumeration-of-the-boxes)
+measures: twenty to thirty-six boxes solved, and no configuration goes far
+past that whatever its constant.
 
 That is the whole answer to why raising the constant stops buying exploration:
 the run can only end on one of these caps, never on the optimality test, so the
@@ -462,33 +465,43 @@ On the benchmark problems, which are multimodal in **every** variable, it loses:
 
 | problem | 5 split, $m=2$ (32 boxes) | 3 split, $m=4$ (64) | 2 split, $m=10$ (100) | 1 split, $m=10$ (10) |
 |---------|---------------------------|---------------------|-----------------------|----------------------|
-| Rastrigin | **$4.98$** | $9.95$ | $9.95$ | $18.90$ |
-| Ackley | $9.71$ | $13.64$ | **$9.53$** | $16.07$ |
-| Styblinski-Tang | **$0.00$, 3/3** | $14.14$, 1/3 | $28.27$ | $28.27$ |
+| Rastrigin | **$4.98$** · 823 | $9.95$ · 831 | $9.95$ · 1765 | $18.90$ · 557 |
+| Styblinski-Tang | **$0.00$, 2/3** · 458 | $14.14$, 1/3 · 853 | $28.27$ · 652 | $28.27$ · 466 |
+| Partly multimodal | $1.99$ · 540 | **$0.00$, 3/3** · 773 | **$0.00$, 3/3** · 858 | $3.98$ · 419 |
 
 The reason is the one already established: a variable left unsubdivided keeps all
 of its basins inside every box, and the local solve returns the one it starts in.
 Styblinski-Tang has two basins per variable, so leaving three of the five out
-leaves eight basins in every box, and the run that solved every starting point
-with thirty-two boxes now solves none with a hundred.
+leaves eight basins in every box, and a run reaching the optimum from two
+starting points out of three with thirty-two boxes reaches it from none with a
+hundred.
 
 On an objective whose multimodality is concentrated, `partly_multimodal`, which is
 Rastrigin in two variables plus a paraboloid in the other three, it wins clearly:
 
 | subdivision | boxes | gap | cost | reached |
 |-------------|-------|-----|------|---------|
-| 5 split, $m=2$ | 32 | $1.99$ | 708 | 0/3 |
-| 3 split, $m=4$ | 64 | **$0.00$** | 1165 | **3/3** |
-| 2 split, $m=10$ | 100 | **$0.00$** | 1329 | **3/3** |
-| 2 split, $m=5$ | 25 | $1.99$ | 950 | 0/3 |
-| 2 split, $m=3$ | 9 | $1.99$ | 381 | 0/3 |
+| 5 split, $m=2$ | 32 | $1.99$ | 540 | 0/3 |
+| **3 split, $m=4$** | 64 | **$0.00$** | **773** | **3/3** |
+| 2 split, $m=10$ | 100 | **$0.00$** | 858 | **3/3** |
+| 2 split, $m=5$ | 25 | $1.99$ | 620 | 0/3 |
+| 2 split, $m=3$ | 9 | $1.99$ | 383 | 0/3 |
+| 1 split, $m=10$ | 10 | $3.98$ | 419 | 0/3 |
 
 Subdividing every variable coarsely fails from every starting point; subdividing
-the two multimodal ones finely succeeds from every one. And the requirement is
-the same as everywhere else, the subdivision resolving the basins: Rastrigin's
-minima are a unit apart over a range of ten, so $m=10$ works on those two
-variables and $m=5$ or $m=3$ does not, at a third of the cost and none of the
-result.
+the multimodal ones finely succeeds from every one. The requirement is the same as
+everywhere else, the subdivision resolving the basins: Rastrigin's minima are a
+unit apart over a range of ten, so a fine subdivision of those variables works
+and $m=5$ or $m=3$ does not, at a lower cost and none of the result.
+
+The cheapest configuration that works is **not** the one splitting the fewest
+variables. Splitting three variables into four, $773$ evaluations, beats
+splitting two into ten, $858$, although the second matches the multimodality of
+the problem exactly. Sixty-four boxes over three variables give the master a
+smaller model than a hundred over two, $12$ binaries against $20$, and the third
+variable costs nothing to subdivide because a paraboloid is unimodal in every
+box. So the choice is still governed by the binaries, not by a count of
+multimodal variables.
 
 So the rule is not about the number of variables but about **where the
 multimodality is**: subdivide the variables the objective is multimodal in, as
