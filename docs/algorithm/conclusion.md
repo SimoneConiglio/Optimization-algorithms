@@ -66,11 +66,21 @@ Established:
   like a categorical choice rather than a discrete one;
 - a hierarchy of subdivisions loses to the flat method wherever a flat
   subdivision can resolve the basins, and wins on the one case it cannot, a
-  basin too broad for any affordable density: the deep hierarchy is the only
-  configuration measured here that solves Ackley at five variables.
+  basin too broad for any affordable density: on Ackley at five variables the
+  deep hierarchy reaches the optimum from four starting points out of six
+  against two for the flat method, both having stopped on their own criteria.
 
 Not established:
 
+- **anything beyond the budget each comparison was run at.** A run whose cost
+  equals its budget was stopped rather than finished, and ranking two of them
+  says which got further, not which is better. Where it was checked, on Ackley
+  at five variables, a larger budget did change the answer, from no starting
+  point reaching the optimum to two out of six, and then stopped changing it:
+  both configurations end at the same evaluation whether they are allowed
+  $5000$ or $10\,000$, because what binds them is their own stopping rule and
+  not the budget. Every other truncated cell carries the same caveat until it is
+  re-run.
 - **generalization.** The constants and the number of subdivisions were tuned on
   the problems then reported. A claim about the method needs a held-out set or a
   protocol fixed in advance.

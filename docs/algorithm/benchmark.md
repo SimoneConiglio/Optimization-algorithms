@@ -243,11 +243,12 @@ first.
 
 The deep hierarchy **solves Ackley** at five variables, from four starting
 points out of six, and it ends on its own criterion at $2387$ evaluations rather
-than on the budget. The flat subdivision at the same density does not, returning
-$6.30$ — but four of its six runs were **stopped by the budget**, so what is
-established is that the hierarchy gets there within $2500$ evaluations and the
-flat method does not, not that the flat method cannot. The comparison at larger
-budgets is below.
+than on the budget. The flat subdivision at the same density returns $6.30$ here,
+but four of its six runs were **stopped by the budget**, so this row understates
+it: given twice the budget it reaches the optimum from two starting points out of
+six, and no further with more. The margin is four out of six against two, which
+is [measured below](#does-more-budget-change-the-answer) rather than read off
+this table.
 
 On Styblinski-Tang every configuration solves the problem, so that panel is about
 cost alone, and the flat coarse subdivision wins outright, $486$ evaluations
@@ -267,5 +268,42 @@ again.
 So the hierarchies are not a default and are not a failure either. They are the
 answer to one specific shape of problem, a basin too broad for any affordable
 density, and the flat subdivision remains the answer everywhere else.
+
+## Does more budget change the answer?
+
+Several comparisons above are between runs the budget stopped, so the obvious
+question is whether the rankings are properties of the method or of the number
+$2500$. On the one comparison where it matters most, Ackley at five variables,
+the answer is measured rather than argued. Six starting points:
+
+| budget | flat $m=10$ | deep, 4 levels of 2 |
+|--------|-------------|---------------------|
+| $2500$ | $6.30$ · 2500 · 0/6 · **4 of 6 at the wall** | $0.00$ · 2387 · 4/6 · none at the wall |
+| $5000$ | $5.62$ · 3306 · **2/6** · none at the wall | $0.00$ · 3093 · 4/6 · none at the wall |
+| $10\,000$ | $5.62$ · 3306 · 2/6 · none at the wall | $0.00$ · 3093 · 4/6 · none at the wall |
+
+Two things follow, and the first is a correction.
+
+**The budget was hiding part of the flat method's result.** At $2500$ it reaches
+the optimum from no starting point; given twice that, it reaches it from two out
+of six. The comparison that produced "only the hierarchy solves Ackley" was
+between a truncated run and a finished one, and the honest margin is **four out
+of six against two**, not four against none.
+
+**Past that, more budget buys nothing at all.** The rows at $5000$ and
+$10\,000$ are *identical*, to the evaluation: both configurations stop at $3306$
+and $3093$ evaluations whatever they are allowed. They end on their own caps, the
+trust region shrinking to infeasibility or the stall counter firing, described in
+[annex C](tuning.md#the-two-caps-that-end-a-run). So on this problem the budget
+is not the binding constraint and raising it is not the way; what binds is the
+stopping rule.
+
+That is the general answer to the question, and it cuts both ways. Where a cell
+reports a cost below its budget, the budget was never binding and the comparison
+stands as measured, which covers most of this page, including the whole Rastrigin
+column: flat $m=10$ solves it from all six starting points for $1920$ evaluations
+at a budget of $2500$, of $5000$ and of $10\,000$ alike. Where a cell reports a
+cost equal to its budget, the number is an upper bound and the ranking is only
+"within this budget" until it is re-run, as Ackley was here.
 
 What all of this establishes, and where it can go, is [the conclusion](conclusion.md).
