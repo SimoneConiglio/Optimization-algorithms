@@ -298,74 +298,60 @@ the radius alone recovers the guarantee.
 ## At five variables, which knob to turn
 
 The two-dimensional benchmark is where the mechanisms were tuned, and what works
-there does not carry over unchanged. Two questions are open at five variables:
-which of the two mechanisms to use, and whether to subdivide every variable
-coarsely or a few of them finely.
+there does not carry over unchanged. At five variables the first knob is not the
+mechanism at all: it is the **density** of the subdivision, swept in
+[the benchmark](benchmark.md#the-density-of-the-subdivision-decides). The
+mechanism is the second, and the two interact.
 
-### The constant is the better buy at the coarse subdivision
+### The mechanism, at the two densities that matter
 
-Two subdivisions per variable, equal budget, three starting points:
+Equal budget of $2500$, three starting points, the trust region at its default
+radius of two:
 
-| problem | adaptive | pure convexification |
-|---------|----------|----------------------|
-| Rastrigin | $4.98$ · 899 · 0/3 | $4.98$ · **606** · 0/3 |
-| Ackley | $9.71$ · 1429 · 0/3 | $14.43$ · 598 · 0/3 |
-| Styblinski-Tang | $0.00$ · 466 · 3/3 | $0.00$ · **458** · 3/3 |
-| Griewank | $0.06$ · 1644 · 0/3 | $0.06$ · **1277** · 0/3 |
+| problem | $m$ | adaptive | pure convexification |
+|---------|-----|----------|----------------------|
+| Rastrigin | 2 | $4.98$ · 823 | $4.98$ · **504** |
+| Rastrigin | 10 | **$0.00$ · 2103 · 3/3** | $1.92$ · 1407 |
+| Ackley | 2 | $14.43$ · 892 | $14.43$ · **335** |
+| Ackley | 10 | $6.30$ · 2500 | **$4.95$ · 2500 · 1/3** |
+| Styblinski-Tang | 2 | $0.00$ · 458 · 2/3 | **$0.00$ · 294 · 3/3** |
+| Styblinski-Tang | 10 | $14.14$ · 598 · 1/3 | $14.14$ · 421 |
+| Griewank | 2 | $0.06$ · 1016 | $0.06$ · **568** |
+| Griewank | 10 | **$0.03$ · 2500** | $0.13$ · 1477 |
 
-Same answer on three problems out of four for a quarter to a third less, the
-exception being Ackley. Sweeping each mechanism's constant per problem, at that
-same subdivision:
+The pure convexification is **consistently cheaper and usually no worse**, which
+is the one place on this benchmark where it earns its keep: where both reach the
+same answer it does so for a third to two thirds of the cost, and on
+Styblinski-Tang at the coarse subdivision it is the better of the two outright,
+3/3 against 2/3 for $294$ evaluations against $458$.
 
-| problem | constant | $1$ | $10$ | $100$ | $1000$ |
-|---------|----------|-----|------|-------|--------|
-| Rastrigin | convexification | $28.85$ | $8.57$ | **$4.98$** | $8.57$ |
-| Rastrigin | margin | $8.57$ | $8.57$ | **$4.98$** | $4.98$ |
-| Ackley | convexification | $14.43$ | $14.43$ | $14.43$ | $14.43$ |
-| Ackley | margin | $14.43$ | $14.43$ | **$9.71$** | $9.71$ |
-| Styblinski-Tang | convexification | $28.27$ | $28.27$ | **$0.00$** | $0.00$ |
-| Styblinski-Tang | margin | $0.00$ | **$0.00$ (230)** | $0.00$ | $0.00$ |
-| Griewank | convexification | $0.08$ | $0.06$ | $0.06$ | $0.06$ |
-| Griewank | margin | **$0.06$ (422)** | $0.06$ | $0.06$ | $0.06$ |
+Where the two part company is the case the method exists for. On Rastrigin at
+ten subdivisions, the adaptive repair solves the problem from every starting
+point and the convexification does not solve it at all. Paying $2103$ instead of
+$1407$ for that is the trade the default takes, and it is why `adaptive` is the
+default rather than the cheaper mechanism.
 
-The constant is **not** to be scaled down with the range of the objective as
-simply as the two-dimensional case suggested: Griewank spans about two and is
-served as well by any value, while Styblinski-Tang spans hundreds and the
-convexification needs a hundred exactly. Where a smaller constant suffices it is
-also cheaper, Styblinski-Tang being solved for $230$ evaluations at a margin of
-ten instead of $466$ at a hundred, so the constant is worth sweeping downwards
-once a configuration works. And Ackley is insensitive to every value of either
-mechanism, which says the master is not what fails there.
+### The density and the mechanism are not independent
 
-### At the fine subdivision, the margin goes up, not down
+Two rows above are worth separating out, because they say the interaction runs
+both ways.
 
-Ten subdivisions per variable, the radius sized to the diameter of the design
-space, $45$, a budget of $5000$:
+**Refining rescues Rastrigin and ruins Styblinski-Tang.** Going from two
+subdivisions to ten takes Rastrigin from $4.98$ and nothing reached to $0.00$
+from every starting point, and takes Styblinski-Tang from $0.00$ and 2/3 to
+$14.14$ and 1/3, under **either** mechanism. So this is a property of the
+subdivision rather than of the master: Styblinski-Tang has two basins per
+variable, ten subdivisions cut each basin into five boxes, and a box that holds
+no minimum of its own gives the master a value and a sensitivity that say
+nothing about where the minimum is. Refining past the basins does not merely
+waste sub-problems, it degrades the ranking.
 
-| problem | mechanism | $1$ | $10$ | $30$ | $100$ |
-|---------|-----------|-----|------|------|-------|
-| Rastrigin | margin | $17.91$ | $6.11$ | **$0.00$, 2/3 (2895)** | **$0.00$, 2/3 (3357)** |
-| Rastrigin | convexification | $33.41$ | $33.41$ | $33.41$ | **$6.97$** |
-| Ackley | margin | $8.12$ | $8.12$ | $8.12$ | **$7.08$** |
-| Ackley | convexification | $19.42$ | $19.42$ | $18.58$ | **$16.52$**, 1/3 |
-
-Finer boxes differ from each other by less, so a constant tuned on the coarse
-subdivision might be expected to swamp their ranking. Measured with the radius
-left at the master's default, that is what it looks like: a margin of ten then
-beats a margin of a hundred at this density, $3.98$ against $15.92$. With the
-radius sized, the ordering reverses and the large margin wins outright. The
-apparent need for a smaller constant was the master being unable to move more
-than a variable or two at a time, and a smaller margin making that confinement
-less harmful.
-
-One case does behave the other way, and it is the pure convexification rather
-than the adaptive repair: Styblinski-Tang at ten subdivisions per variable, with
-the radius already sized, is solved by a constant of **one** for $212$
-evaluations, the cheapest configuration measured on any five-variable problem
-here, and ruined by ten or a hundred, $46.82$ and $28.27$, while the same problem
-at four subdivisions per variable needs a hundred. So the constant of the
-convexification does depend on the size of the boxes; it is not a rule that
-transfers from one problem to another.
+**Ackley is the opposite and still is not solved.** It improves with refinement
+under both mechanisms, $14.43$ to $6.30$ and $14.43$ to $4.95$, and reaches the
+optimum only once out of three even then. Its single broad basin over a range of
+sixty is what no density of this benchmark resolves; the deep hierarchy of
+[the benchmark](benchmark.md#the-extensions-and-what-they-are-worth) is the only
+configuration here that does.
 
 ### A hierarchy of subdivisions, and the rule that refines it
 
