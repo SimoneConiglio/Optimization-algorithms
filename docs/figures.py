@@ -693,35 +693,34 @@ def draw_results(foreground: str):
 
 EXTENSIONS = {
     "Rastrigin": {
-        "flat $m=2$": (4.975, 900, 0),
-        "flat $m=10$": (0.995, 2500, 2),
-        "2 then 5, value": (4.975, 2500, 0),
-        "2 then 5, cuts": (2.985, 2499, 0),
-        "deep, 4 of 2": (4.975, 2140, 0),
+        "flat $m=2$": (4.975, 888, 0),
+        "flat $m=10$": (0.0, 1920, 6),
+        "2 then 5, value": (4.975, 1986, 0),
+        "2 then 5, cuts": (2.452, 1947, 0),
+        "deep, 4 of 2": (4.975, 1672, 0),
         "frontier": (6.700, 2500, 0),
     },
     "Ackley": {
-        "flat $m=2$": (9.714, 1226, 0),
-        "flat $m=10$": (10.149, 2500, 0),
-        "2 then 5, value": (6.765, 2500, 0),
-        "2 then 5, cuts": (15.605, 2500, 0),
-        "deep, 4 of 2": (7.880, 2500, 3),
+        "flat $m=2$": (14.430, 873, 0),
+        "flat $m=10$": (6.302, 2500, 0),
+        "2 then 5, value": (6.302, 2417, 0),
+        "2 then 5, cuts": (8.107, 2458, 0),
+        "deep, 4 of 2": (0.0, 2387, 4),
         "frontier": (9.714, 2500, 0),
     },
     "Styblinski-Tang": {
-        "flat $m=2$": (0.0, 468, 6),
-        "flat $m=10$": (0.0, 1044, 2),
-        "2 then 5, value": (0.0, 1303, 6),
-        "2 then 5, cuts": (0.0, 1540, 6),
-        "deep, 4 of 2": (0.0, 1934, 6),
+        "flat $m=2$": (0.0, 486, 5),
+        "flat $m=10$": (0.0, 532, 1),
+        "2 then 5, value": (0.0, 872, 5),
+        "2 then 5, cuts": (0.0, 987, 5),
+        "deep, 4 of 2": (0.0, 1494, 5),
         "frontier": (0.0, 2500, 6),
     },
 }
-"""The extensions against the flat subdivisions, at five variables.
+"""The hierarchies against the flat subdivisions, by problem.
 
 Each entry is the median distance to the optimum, the median cost and the number
-of starting points out of six from which the optimum was reached, for a budget of
-$2500$ equivalent evaluations, as measured by ``benchmarks/hierarchy.py``.
+of the six starting points from which the optimum was reached.
 """
 
 

@@ -172,17 +172,17 @@ variable left out keeps all of its basins inside every box.
 | 2 variables, $m=5$ | 25 | $1.99$ | 0/3 |
 
 **A hierarchy** was built in three shapes. The deep one reaches the optimum of
-Ackley from half of the starting points, which nothing else here does; none of
-them beats the flat subdivision elsewhere.
+Ackley from four starting points out of six, which nothing else here does; none
+of them beats the flat subdivision elsewhere.
 
 | method | Rastrigin | Ackley | Styblinski-Tang |
 |--------|-----------|--------|-----------------|
-| flat $m=2$ | $4.98$ | $9.71$ | **$0.00$, 6/6, 468** |
-| flat $m=10$ | **$1.00$, 2/6** | $10.15$ | $0.00$, 2/6, 1044 |
-| two levels, by value | $4.98$ | $6.77$ | $0.00$, 6/6, 1303 |
-| two levels, by cuts | $2.99$ | $15.61$ | $0.00$, 6/6, 1540 |
-| deep, 4 levels of 2 | $4.98$ | $7.88$, **3/6** | $0.00$, 6/6, 1934 |
-| frontier, best first | $6.70$ | $9.71$ | $0.00$, 6/6, 2500 |
+| flat $m=2$ | $4.98$ | $14.43$ | $0.00$, 5/6, 486 |
+| flat $m=10$ | **$0.00$, 6/6, 1920** | $6.30$ | $0.00$, 1/6, 532 |
+| two levels, by value | $4.98$ | $6.30$ | $0.00$, 5/6, 872 |
+| two levels, by cuts | $2.45$ | $8.11$ | $0.00$, 5/6, 987 |
+| deep, 4 levels of 2 | $4.98$ | **$0.00$, 4/6, 2387** | $0.00$, 5/6, 1494 |
+| frontier, best first | $6.70$ | $9.71$ | $0.00$, **6/6**, 2500 |
 
 ```{image} ../_static/figures/extensions.svg
 :class: only-light
@@ -195,20 +195,32 @@ them beats the flat subdivision elsewhere.
 ```
 
 Two readings the medians alone hide. The deep hierarchy is the only
-configuration here that **reaches** the optimum of Ackley, from three starting
-points out of six, and its median is worse than the two-level one precisely
-because the outcome is bimodal, a run either descending into the central basin
-or committing to the wrong subdomain. And on Styblinski-Tang every
-configuration solves the problem, so the panel is about cost alone, where the
-flat coarse subdivision wins outright, $468$ evaluations against $1300$ to
-$2500$ for the hierarchies.
+configuration measured anywhere in this documentation that **solves** Ackley at
+five variables, from four starting points out of six, where the flat method at
+its best density never does. Its median gap is $0.00$ and its cost is nearly the
+whole budget, which is the shape of a run that either descends into the central
+basin or commits to the wrong subdomain and spends the rest of its budget there.
+Ackley is the problem whose single broad basin no density of this benchmark
+resolves, and splitting each variable in two, four times over, is what finally
+separates it.
+
+On Styblinski-Tang every configuration solves the problem, so that panel is about
+cost alone, and the flat coarse subdivision wins outright, $486$ evaluations
+against $872$ to $2500$ for the hierarchies. The frontier is the only shape
+reaching it from all six starting points, for five times the cost of the cheapest
+that reaches five.
 
 **The frontier**, which is the only shape able to undo a choice, is the worst of
 the family on Rastrigin, $6.70$ against $4.98$ for doing nothing at all, and the
-reason is not the backtracking it adds but what it costs: every node restarts a master and throws its cuts away, so the same budget
-that fills one model with fifty cuts fills ten models with five each, none of
-them determined enough to rank its own children. What the flat method does
-instead is keep one model over the whole subdivision and localize with its trust
-region, which can also widen again.
+reason is not the backtracking it adds but what it costs: every node restarts a
+master and throws its cuts away, so the same budget that fills one model with
+fifty cuts fills ten models with five each, none of them determined enough to
+rank its own children. What the flat method does instead is keep one model over
+the whole subdivision and localize with its trust region, which can also widen
+again.
+
+So the hierarchies are not a default and are not a failure either. They are the
+answer to one specific shape of problem, a basin too broad for any affordable
+density, and the flat subdivision remains the answer everywhere else.
 
 What all of this establishes, and where it can go, is [the conclusion](conclusion.md).
