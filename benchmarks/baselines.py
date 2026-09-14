@@ -55,7 +55,7 @@ from benchmarks.configurations import DEFAULT_CONFIGURATION
 from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import Counter
 from benchmarks.problems import Objective
-from gemseo_box_subdivision import create_box_subdivision_scenario
+from gemseo_box_subdivision import BoxSubdivisionScenario
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -263,7 +263,7 @@ def run_box_subdivision(
     design_space = _design_space(
         problem, dimension, _starting_point(problem, dimension, seed)
     )
-    scenario = create_box_subdivision_scenario(
+    scenario = BoxSubdivisionScenario(
         [Objective(counter, dimension)],
         "f",
         design_space,

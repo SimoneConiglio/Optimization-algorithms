@@ -19,16 +19,19 @@ from __future__ import annotations
 import pytest
 from gemseo.algos.design_space import DesignSpace
 from gemseo.core.discipline import Discipline
+from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (  # noqa: E501
+    BiLevelMasterOuterApproximation_Settings,
+)
 from numpy import array
 from numpy import cos
 from numpy import pi
 from numpy import sin
 from numpy import zeros
 
+from gemseo_box_subdivision import BoxSubdivisionScenario
 from gemseo_box_subdivision import BoxSubdivisionSettings
 from gemseo_box_subdivision import MultiResolution
 from gemseo_box_subdivision import create_box_subdivision_scenario
-from gemseo_box_subdivision import execute_box_subdivision_scenario
 
 
 class Rastrigin(Discipline):
@@ -91,10 +94,10 @@ def test_subdividing_some_variables_only() -> None:
 
 def test_the_defaults_solve_rastrigin() -> None:
     """The entry point must solve the benchmark problem out of the box."""
-    scenario = create_box_subdivision_scenario(
+    scenario = BoxSubdivisionScenario(
         [Rastrigin()], "f", design_space(), n_subdivisions=10
     )
-    execute_box_subdivision_scenario(scenario)
+    scenario.execute()
     assert best(scenario) == pytest.approx(0.0, abs=1e-4)
 
 
@@ -183,3 +186,59 @@ def test_the_radius_is_scaled_by_the_levels() -> None:
     settings = BoxSubdivisionSettings(trust_region_radius=2)
     assert settings.to_master_settings()["max_step"] == 2
     assert settings.to_master_settings(radius=2 * 3)["max_step"] == 6
+
+
+def test_a_mapping_selects_the_variables_it_names() -> None:
+    """A mapping of the subdivisions must name the variables to subdivide."""
+    space = design_space("a")
+    space.add_variable("b", lower_bound=0.0, upper_bound=1.0, size=1, value=0.5)
+    scenario = BoxSubdivisionScenario(
+        [Rastrigin("a")], "f", space, n_subdivisions={"a": 4}
+    )
+    assert scenario.subdivision.variable_names == ("a",)
+    assert "b_box" not in scenario.formulation.design_space
+
+
+def test_a_mapping_may_give_a_density_per_variable() -> None:
+    """Each variable a mapping names must get the density it asks for."""
+    space = design_space("a")
+    space.add_variable("b", lower_bound=0.0, upper_bound=1.0, size=1, value=0.5)
+    scenario = BoxSubdivisionScenario(
+        [Rastrigin("a")], "f", space, n_subdivisions={"a": 4, "b": 7}
+    )
+    assert scenario.subdivision.n_subdivisions == {"a": 4, "b": 7}
+
+
+def test_an_unknown_variable_in_the_mapping_is_refused() -> None:
+    """Check the error raised when a mapping names a variable that is unknown."""
+    with pytest.raises(ValueError, match="not in the design space"):
+        BoxSubdivisionScenario(
+            [Rastrigin()], "f", design_space(), n_subdivisions={"nope": 4}
+        )
+
+
+def test_an_empty_mapping_is_refused() -> None:
+    """Check the error raised for a mapping that names nothing."""
+    with pytest.raises(ValueError, match="is empty"):
+        BoxSubdivisionScenario([Rastrigin()], "f", design_space(), n_subdivisions={})
+
+
+def test_the_factory_and_the_class_agree() -> None:
+    """The ``create_`` factory must build the very same scenario."""
+    scenario = create_box_subdivision_scenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=4
+    )
+    assert isinstance(scenario, BoxSubdivisionScenario)
+
+
+def test_explicit_settings_override_the_defaults() -> None:
+    """Executing with settings of its own must use those, not the scenario's."""
+    scenario = BoxSubdivisionScenario(
+        [Rastrigin()], "f", design_space(), n_subdivisions=4
+    )
+    scenario.execute(
+        BiLevelMasterOuterApproximation_Settings(
+            max_iter=2, ub_tol=1e-4, adapt=True, min_dfk=100.0, max_step=1
+        )
+    )
+    assert scenario.formulation.optimization_problem.database

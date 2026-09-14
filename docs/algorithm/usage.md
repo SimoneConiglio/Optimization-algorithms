@@ -19,18 +19,15 @@ One call builds the scenario, one executes it:
 ```python
 from gemseo.algos.design_space import DesignSpace
 
-from gemseo_box_subdivision import (
-    create_box_subdivision_scenario,
-    execute_box_subdivision_scenario,
-)
+from gemseo_box_subdivision import BoxSubdivisionScenario
 
 design_space = DesignSpace()
 design_space.add_variable("x", lower_bound=-4.1, upper_bound=5.9, size=2, value=0.0)
 
-scenario = create_box_subdivision_scenario(
+scenario = BoxSubdivisionScenario(
     [objective_discipline], "f", design_space, n_subdivisions=10
 )
-execute_box_subdivision_scenario(scenario)
+scenario.execute()
 ```
 
 What this owns, so that you cannot get it wrong: chaining the mapping **before**
@@ -50,7 +47,7 @@ Two, and neither has a default that transfers between problems:
 ```python
 from gemseo_box_subdivision import BoxSubdivisionSettings
 
-scenario = create_box_subdivision_scenario(
+scenario = BoxSubdivisionScenario(
     [objective_discipline],
     "f",
     design_space,
@@ -109,7 +106,16 @@ variables to subdivide, and the others stay ordinary variables of the
 sub-problem:
 
 ```python
-create_box_subdivision_scenario(
+# A mapping names the variables to subdivide, and how finely each one.
+BoxSubdivisionScenario([discipline], "f", design_space, n_subdivisions={"x_split": 10})
+
+# Several of them, at densities of their own.
+BoxSubdivisionScenario(
+    [discipline], "f", design_space, n_subdivisions={"x_1": 10, "x_2": 4}
+)
+
+# The same density for a named few, when one number is enough.
+BoxSubdivisionScenario(
     [discipline], "f", design_space, n_subdivisions=10, variable_names=["x_split"]
 )
 ```
@@ -130,7 +136,7 @@ $L$ levels of $m$ subdivisions reach $m^L$ subdivisions per component for
 $n m L$ binaries, and the whole thing stays in a single master.
 
 ```python
-create_box_subdivision_scenario(
+BoxSubdivisionScenario(
     [objective_discipline],
     "f",
     design_space,

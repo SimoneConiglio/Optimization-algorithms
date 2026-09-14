@@ -23,16 +23,12 @@ One entry point covers every shape of run:
 
 .. code-block:: python
 
-    from gemseo_box_subdivision import (
-        BoxSubdivisionSettings,
-        create_box_subdivision_scenario,
-        execute_box_subdivision_scenario,
-    )
+    from gemseo_box_subdivision import BoxSubdivisionScenario
 
-    scenario = create_box_subdivision_scenario(
+    scenario = BoxSubdivisionScenario(
         [objective_discipline], "f", design_space, n_subdivisions=10
     )
-    execute_box_subdivision_scenario(scenario)
+    scenario.execute()
 
 The settings that decide whether a run works are the density of the subdivision
 and the convexity margin, which is in the units of the objective. Everything else
@@ -60,8 +56,8 @@ from gemseo_box_subdivision.hierarchy import read_solved_boxes
 from gemseo_box_subdivision.hierarchy import refine_deep
 from gemseo_box_subdivision.hierarchy import refine_frontier
 from gemseo_box_subdivision.hierarchy import refine_two_levels
+from gemseo_box_subdivision.scenario import BoxSubdivisionScenario
 from gemseo_box_subdivision.scenario import create_box_subdivision_scenario
-from gemseo_box_subdivision.scenario import execute_box_subdivision_scenario
 from gemseo_box_subdivision.settings import BoxSubdivisionSettings
 from gemseo_box_subdivision.subdivisions.box import BoxSubdivision
 from gemseo_box_subdivision.subdivisions.multi_resolution import MultiResolution
@@ -72,6 +68,7 @@ __all__ = [
     "BoxConstraint",
     "BoxMapping",
     "BoxSubdivision",
+    "BoxSubdivisionScenario",
     "BoxSubdivisionSettings",
     "MultiResolution",
     "MultiResolutionMapping",
@@ -82,7 +79,6 @@ __all__ = [
     "create_box_start_adapter_class",
     "create_box_subdivision_scenario",
     "create_normalized_box_design_space",
-    "execute_box_subdivision_scenario",
     "read_solved_boxes",
     "refine_deep",
     "refine_frontier",
