@@ -47,6 +47,7 @@ from gemseo.core.mdo_functions.mdo_function import MDOFunction
 from gemseo_bilevel_outer_approximation.algos.opt.bilevel_master_outer_approximation.bilevel_master_outer_approximation_settings import (  # noqa: E501
     BiLevelMasterOuterApproximation_Settings,
 )
+from numpy import array
 from numpy import full
 from numpy.random import default_rng
 
@@ -101,8 +102,12 @@ def default_n_subdivisions(dimension: int, max_boxes: int = MAX_BOXES) -> int:
     return max(2, int(max_boxes ** (1.0 / dimension)))
 
 
-METHODS = ("box_subdivision", "multistart", "cmaes", "direct")
+METHODS = ("box_subdivision", "multistart", "cmaes", "direct", "egobox")
 """The methods compared."""
+
+
+N_DOE_PER_VARIABLE = 5
+"""The size of the initial design of experiments of EGO, per design variable."""
 
 
 class BudgetExceededError(Exception):
@@ -404,6 +409,54 @@ def run_direct(
     return _result("direct", problem, dimension, seed, counter, adjoint)
 
 
+def run_egobox(
+    problem: Problem, dimension: int, seed: int, budget: int, adjoint: bool
+) -> Result:
+    """Run EGO, the Bayesian optimization of `egobox`.
+
+    This is the baseline of the regime the method targets: a surrogate is fitted
+    to every point evaluated so far and the next point is chosen by maximizing an
+    expected improvement over it, which is worth its own cost only when an
+    evaluation is expensive. It is therefore the one baseline whose comparison at
+    equal *evaluations* flatters it least on these analytic problems and most on
+    the industrial case the method is built for.
+
+    Its budget is enforced natively and exactly: the number of calls is
+    ``n_doe + max_iters``, since the batch size is one. Raising from its objective
+    is not an option, the optimizer being a Rust extension.
+
+    Args:
+        problem: The problem.
+        dimension: The number of design variables.
+        seed: The seed of the initial design of experiments.
+        budget: The budget in objective evaluations.
+        adjoint: Unused, EGO using no gradient.
+
+    Returns:
+        The outcome of the run.
+    """
+    import egobox as egx  # noqa: PLC0415
+
+    counter = Counter(problem)
+
+    def objective(x: ndarray) -> ndarray:
+        """Return the objective at each row, as `egobox` expects it."""
+        return array([counter.objective(row) for row in x]).reshape(-1, 1)
+
+    # The usual rule of thumb for the initial design, kept below half the budget
+    # so that the surrogate is actually used rather than merely fitted.
+    n_doe = max(2, min(N_DOE_PER_VARIABLE * dimension, budget // 2))
+    specs = [
+        egx.XSpec(egx.XType.FLOAT, [problem.lower_bound, problem.upper_bound])
+    ] * dimension
+    with suppress(BudgetExceededError):
+        egx.Egor(specs, n_doe=n_doe).minimize(
+            objective, max_iters=max(1, budget - n_doe), seed=seed
+        )
+
+    return _result("egobox", problem, dimension, seed, counter, adjoint)
+
+
 def _result(
     method: str,
     problem: Problem,
@@ -444,6 +497,7 @@ RUNNERS = {
     "multistart": run_multistart,
     "cmaes": run_cmaes,
     "direct": run_direct,
+    "egobox": run_egobox,
 }
 """The runner of each method."""
 
