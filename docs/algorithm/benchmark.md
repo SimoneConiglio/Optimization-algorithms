@@ -197,10 +197,13 @@ a gap of $1.00$ and two starting points out of six to a solve from all six.
 
 ## The extensions, and what they are worth
 
-Three extensions were built on top of the method and measured at equal budget,
-five variables, six starting points, $2500$ equivalent evaluations. None of them
-becomes a default, and each says something about where the method's difficulty
-lies. The sweeps behind these numbers are in [annex C](tuning.md).
+Four extensions were built on top of the method and measured at equal budget,
+five variables, $2500$ equivalent evaluations. None of them becomes a default,
+and each says something about where the method's difficulty lies: subdividing
+some variables only, the multi-resolution encoding, the hierarchies, and the
+scores that rank a box. They are derived in
+[the methodology](methodology.md#one-master-several-levels-the-multi-resolution-encoding)
+and the sweeps behind them are in [annex C](tuning.md).
 
 **Subdividing some variables only** wins where the multimodality is concentrated
 and loses where it is not, which is the requirement of the method restated: a
@@ -211,6 +214,49 @@ variable left out keeps all of its basins inside every box.
 | all 5 variables, $m=2$ | 32 | $1.99$ | 0/3 |
 | 2 variables, $m=10$ | 100 | **$0.00$** | **3/3** |
 | 2 variables, $m=5$ | 25 | $1.99$ | 0/3 |
+
+**The multi-resolution encoding**, one categorical variable per level with the
+box index read off as its base-$m$ digits, is the one construction here that
+changes how many binaries a resolution costs. Rastrigin at five variables, three
+starting points, the same budget of $2500$:
+
+| encoding | binaries | resolution | gap | cost | reached |
+|----------|----------|------------|-----|------|---------|
+| flat, $m=10$ | 50 | 10 | **$0.00$** | 2103 | **3/3** |
+| flat, $m=16$ | 80 | 16 | $1.99$ | 1706 | 0/3 |
+| levels $m=2$, $L=4$ | 40 | 16 | $2.99$ | 2500† | 0/3 |
+| levels $m=2$, $L=5$ | 50 | 32 | $5.25$ | 2338 | 0/3 |
+| **levels $m=4$, $L=2$** | **40** | **16** | **$1.99$** | 1953 | **1/3** |
+| levels $m=4$, $L=3$ | 60 | 64 | $3.14$ | 1409 | 1/3 |
+| levels $m=2$, $L=4$, positional | 40 | 16 | $7.04$ | 2500† | 0/3 |
+
+† stopped by the budget.
+
+**The construction does what it claims.** At a resolution of sixteen, the
+two-level encoding with $m=4$ matches the flat encoding's gap of $1.99$ on
+**half the binaries**, forty against eighty, and reaches the optimum from one
+starting point where the flat encoding reaches it from none. The saving is real
+and it grows: sixty binaries buy a resolution of sixty-four, which would cost
+$320$ flat.
+
+**And it does not help on this benchmark**, because the resolution it unlocks is
+past the density these problems want. Rastrigin peaks at ten subdivisions per
+variable, below every resolution in the table, so the encoding is cheaper at
+resolutions that are already too fine. Its best row is still worse than plain
+flat $m=10$, $1.99$ against $0.00$.
+
+**More levels are worse, not better.** Going from four levels to five, at the
+same branching, takes the gap from $2.99$ to $5.25$, and the three-level $m=4$
+row is worse than the two-level one. This is the model class rather than the
+resolution: the cut model is linear in the one-hot variables, so it is additive
+over the digits and cannot express that what a fine digit is worth depends on
+the coarse digit it sits inside. Every level added is another dimension over
+which that assumption is wrong.
+
+**The positional weighting is the worst row of the table.** Weighing a level by
+what its digit is worth in the box index, rather than weighing every level
+alike, costs $7.04$ against $2.99$ — the same conclusion the flat encoding
+reached about the trust-region metric, in a second setting.
 
 **A hierarchy** was built in three shapes. The deep one reaches the optimum of
 Ackley from four starting points out of six, which nothing else here does; none
