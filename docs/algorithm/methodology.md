@@ -218,7 +218,7 @@ radius to use.
 Expressing the ordinal proximity properly would need a different constraint,
 $|v^\top\alpha' - v^\top\alpha| \le \texttt{max\_step}$ on the catalogue values
 $v$, which is not what the master builds. It was measured through a stub, in
-[annex C](tuning.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space), and
+[annex C](tuning.md#which-metric-wins), and
 it is not better: multimodality behaves like a categorical choice, neighbouring
 boxes being no more alike than distant ones.
 
