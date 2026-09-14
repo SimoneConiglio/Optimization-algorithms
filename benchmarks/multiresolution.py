@@ -86,6 +86,7 @@ from benchmarks.baselines import BudgetedCounter
 from benchmarks.baselines import BudgetExceededError
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
 
 if TYPE_CHECKING:
@@ -367,7 +368,17 @@ def run(
         weighting,
     )
     settings = dict(CONFIGURATIONS[configuration])
-    settings["max_step"] = max_step(dimension, branching, levels, weighting)
+    # The unit metric counts the one-hot groups a candidate changes, and this
+    # encoding has one group per level per variable instead of one per variable.
+    # A radius of two would let the master change two *digits*, where the flat
+    # encoding lets it change two whole variables, so it is scaled by the number
+    # of levels to compare like with like. The other weightings have no such
+    # equivalence and keep the diameter.
+    settings["max_step"] = (
+        TRUST_REGION_RADIUS * levels
+        if weighting == "unit"
+        else max_step(dimension, branching, levels, weighting)
+    )
     scenario = create_scenario(
         [MDOChain([MultiResolutionMapping(lower, upper, branching, levels, counter)])],
         "f",
@@ -430,6 +441,7 @@ def main() -> None:
             (2, 4, "unit"),
             (2, 5, "unit"),
             (4, 2, "unit"),
+            (4, 3, "unit"),
             (2, 4, "positional"),
         ):
             outcomes = [
