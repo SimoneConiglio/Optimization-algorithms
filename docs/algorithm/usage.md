@@ -54,7 +54,7 @@ scenario.execute(
         adapt=True,
         min_dfk=100.0,
         number_of_parallel_points=4,
-        max_step=subdivision.max_step,
+        max_step=2,
     )
 )
 ```
@@ -142,8 +142,8 @@ relaxed problem, and they are not meant to be combined:
 | `adapt` | `True` | repairs the cut slopes against the boxes already solved |
 | `min_dfk` | the range of the objective over the design space, roughly | the convexity margin the repair enforces; it is an **absolute** quantity in the units of the objective and has to be scaled to the problem |
 | `convexification_constant` | $0$ with `adapt=True`; otherwise the order of the variation of the objective | the other mechanism; use it *instead of*, not with, the adaptive repair. Raising it beyond that order buys nothing and decays the result, see [annex C](tuning.md#the-pure-convexification-and-the-range-where-it-is-worth-using) |
-| `number_of_parallel_points` | $4$ | decisive: with a single point the master stops after two or three boxes |
-| `max_step` | `subdivision.max_step` | the radius of the trust region of the master, in the distance induced by the weights of the boxes. Its own default of $10$ is unrelated to the design space, whose diameter is $\sum_j (m_j - 1)$: at five variables and ten subdivisions that is $45$, and leaving the radius at ten is the difference between solving Rastrigin and returning a gap of sixteen, see [annex C](tuning.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space) |
+| `number_of_parallel_points` | $4$ | the master probes one radius per point, so that a feasible master stays available. A single point still works, from six starting points out of eight against eight; eight points are as reliable as four and nearly twice as expensive |
+| `max_step` | $2$ | the radius of the trust region of the master, counted in **components changed**, the design spaces of this package weighing every subdivision alike. Keep it small: widening it to {py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`, where the region stops constraining, loses Rastrigin at five variables, and removing the region is worse still, see [annex C](tuning.md#how-wide-the-radius-should-be) |
 | `ub_tol` | $10^{-4}$ | convergence tolerance on the upper bound |
 | `max_iter` | $\ge 80$ | master iterations, not sub-problem iterations |
 

@@ -244,7 +244,8 @@ $v$, injected into the master by the stub in `benchmarks/trust_region.py`:
 | `unit`, step 2 | $0.000$ · 543 · 8/8 | $0.000$ · 560 · 6/8 | $0.007$ · 618 · 0/8 |
 | **`unit`, step 1** | **$0.000$ · 452 · 8/8** | **$0.000$ · 496 · 8/8** | **$0.007$ · 526 · 0/8** |
 | `none` | $0.000$ · 810 · 8/8 | $0.000$ · 450 · 6/8 | $0.027$ · 1000 · 0/8 |
-| `proximity`, step 3 | see below | $0.000$ · 753 · 8/8 | $0.007$ · 1000 · 0/8 |
+| `proximity`, step 9 | $0.000$ · 822 · 8/8 | $0.000$ · 487 · 7/8 | $0.007$ · 1000 · 0/8 |
+| `proximity`, step 3 | $0.000$ · 990 · 8/8 | $0.000$ · 753 · 8/8 | $0.007$ · 1000 · 0/8 |
 
 The tight unit radius is the best cell of every column: it is the only metric
 reaching Ackley from all eight starting points, it is the cheapest on Rastrigin,
@@ -254,7 +255,9 @@ What is **not** true is that the ordinal proximity is the answer. It is the
 constraint the upstream docstring describes and the one that looked like the
 missing piece, and when it is tight it also reaches Ackley 8/8 — for $753$
 evaluations against $496$. So what buys the reliability is a **tight**
-neighbourhood, and the cheapest way to express one is to count components. The
+neighbourhood, and the cheapest way to express one is to count components. On
+Rastrigin the proximity constraint is 8/8 at either radius and costs $822$ or
+$990$ against $452$. The
 ordinal reading of a subdivision index buys nothing on a multimodal landscape,
 where the neighbouring box is no more alike than a distant one. Multimodality is
 closer to a categorical choice than to a discrete one.
