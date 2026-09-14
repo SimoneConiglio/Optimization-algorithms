@@ -33,9 +33,11 @@ quality collapses.
 
 **Two settings decide whether a run works at all**, and both fail silently when
 wrong: the guard against non-convexity, the adaptive repair of the cut slopes or
-the convexification constant, never both; and the radius of the trust region,
-which has to start at the diameter of the design space rather than at the
-master's own default.
+the convexification constant, never both; and the trust region of the master,
+which has to measure the **number of components a candidate changes** and to keep
+a radius of about two. Weighing the subdivisions by their own indexes, which the
+upstream design space does by default for a numeric catalogue, is not a distance
+at all, and it cost this method its best result until it was found.
 
 ## What is established, and what is not
 
@@ -54,8 +56,18 @@ Established:
 - subdividing only the variables the objective is multimodal in solves a problem
   that subdividing every variable coarsely does not, and loses when the
   multimodality is spread over all of them;
-- the radius of the trust region has to start at the diameter of the design
-  space, $\sum_j (m_j - 1)$, the master's default of ten being unrelated to it.
+- the trust region has to be **tight** and measured in components changed: a
+  radius of two solves Rastrigin at five variables from every starting point,
+  where the diameter of the design space reaches it from two out of six and no
+  region at all from one;
+- the ordinal proximity between neighbouring boxes, which the constraint appears
+  to promise, is worth nothing here: measured through a stub it is as reliable
+  as counting components and half again as expensive, multimodality behaving
+  like a categorical choice rather than a discrete one;
+- a hierarchy of subdivisions loses to the flat method wherever a flat
+  subdivision can resolve the basins, and wins on the one case it cannot, a
+  basin too broad for any affordable density: the deep hierarchy is the only
+  configuration measured here that solves Ackley at five variables.
 
 Not established:
 
@@ -63,9 +75,12 @@ Not established:
   the problems then reported. A claim about the method needs a held-out set or a
   protocol fixed in advance.
 - **a rule for the number of subdivisions.** It has to follow the spacing of the
-  basins rather than the dimension, and that spacing is not known a priori.
-  Estimating it, from the curvature or from a first sampling, is the most
-  valuable next step, and the same estimate would say which variables to
+  basins rather than the dimension, and that spacing is not known a priori. The
+  sweep gives a ceiling, the binaries a budget can identify, and a floor, the
+  basins, but no single value serves the four problems: ten subdivisions per
+  variable is the best density for three of them and the worst for the fourth.
+  Estimating the spacing, from the curvature or from a first sampling, is the
+  most valuable next step, and the same estimate would say which variables to
   subdivide at all.
 - **the convergence guarantee of the convexification.** A run ends on the trust
   region or on the stall counter, never on the optimality test, so the guarantee

@@ -90,10 +90,23 @@ $\sum_j m_j$, and the cuts that can be afforded. A fine subdivision is not out o
 reach because of its boxes; it is demanding because its model has more
 coefficients to identify.
 
-That ratio is measurable, and it is where the method turns over: on five
+That ratio is measurable, and it is the **ceiling** on the density: on five
 variables with a budget affording some fifty sub-problems, ten subdivisions per
 variable, fifty binaries over a hundred thousand boxes, is the best density
-measured, while sixteen, eighty binaries, is markedly worse, see
+measured, while sixteen, eighty binaries, is markedly worse.
+
+The **floor** is set by the landscape rather than the budget: the subdivision has
+to separate the basins, which is why a problem whose minima are one unit apart
+over a range of ten needs ten subdivisions and is not solved by two. Between the
+two there is usually room, and there need not be: a subdivision fine enough to
+resolve the basins may already carry more coefficients than the budget can
+identify, and that is the case the method cannot serve.
+
+Refining past the basins is not free either. A box holding no minimum of its own
+returns a value and a post-optimal sensitivity that describe a constrained
+solution on its border, which says nothing about where the minimum is, so an
+over-fine subdivision degrades the ranking rather than merely wasting
+sub-problems. All three effects are measured in
 [the results](benchmark.md#the-density-of-the-subdivision-decides).
 
 ## The bi-level problem
@@ -509,6 +522,15 @@ the model the ratio is about. A hierarchy that did not pay it would need a maste
 over a **growing set of leaves**, adding binaries as a box is split and keeping
 every cut, which is a different master problem from the one this package builds
 on, whose catalogue of boxes is fixed when the design space is created.
+
+That trade is why the hierarchies lose to the flat subdivision on the problems
+a flat subdivision can resolve. Where they win is the case the flat method has no
+answer to: a basin **too broad for any affordable density**. Ackley's single
+basin spans a range of sixty, no density of the benchmark separates it, and the
+deep hierarchy, splitting each variable in two four times over, solves it from
+four starting points out of six. Each of its levels carries only $2n$
+coefficients, so a quarter of the budget is enough to determine one, and the
+resolution reached is $2^4$ per variable without any level ever being large.
 
 The measured behaviour of the three shapes, and of the two scores, is in
 [the results](benchmark.md#the-extensions-and-what-they-are-worth).
