@@ -178,91 +178,112 @@ step towards `max_step` and retrying before giving up on an infeasible master,
 and reporting the bound net of the convexification term, which vanishes at the
 integer points and so leaves the gap meaningful.
 
-## The trust region is a compromise, and its default is not the design space
+## The trust region, and the metric it should measure
 
-The master does not consider every box at each iteration: it restricts the MILP
-to a neighbourhood of the incumbent, whose radius `max_step` shrinks when the
-upper bound stops improving. Without that restriction the master is the textbook
-outer approximation, which explores until its lower bound rises above the
-incumbent; with it, the run is cheaper and stops earlier. Which is the better
-trade depends on the problem, so the radius is worth setting deliberately.
+The master restricts each iteration to a neighbourhood of the incumbent box. Two
+things decide what that neighbourhood is: the **metric**, set by the catalogue
+weights of the design space, and the **radius** `max_step`. The metric was wrong
+for most of the life of this package, so every sweep on this page was re-run once
+it was fixed.
 
-Two things make the default wrong for a box subdivision.
+### What the constraint actually measures
 
-**The distance is not the number of boxes apart.** The trust region is the linear
-constraint
+The trust region is the linear constraint
 
 $$
 \sum_{j \,:\, \alpha'_j = \alpha_j} w_j(\alpha) \ \ge\ \sum_j w_j(\alpha) - \texttt{max\_step},
 $$
 
-so the cost of moving from the incumbent $\alpha$ to a candidate $\alpha'$ is the
-sum of the **weights the incumbent selects** over the components the candidate
-changes. The design spaces built here leave the catalogue weights at their
-default, which `CatalogueDesignSpace` sets to the catalogue itself, and the
-catalogue of a subdivided variable is the range of its subdivision indexes:
+so a candidate pays $w_j(\alpha)$ for each component it changes, where
+$w_j(\alpha)$ is the weight the **incumbent** holds. The destination never enters
+the expression.
+
+`CatalogueDesignSpace` defaults a numeric catalogue's weights to the catalogue
+itself, and the catalogue of a subdivided variable is the range of its
+subdivision indexes, so the design spaces of this package used to inherit
 
 ```text
 x_box weights = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 ```
 
-Leaving the first subdivision of a component is therefore free and leaving the
-last one costs $m_j - 1$, whatever the candidate. The distance is neither the
-number of components changed nor how far they move.
+That reads like an ordinal proximity and is not one. Leaving the first
+subdivision of a component is free and leaving the last costs $m_j - 1$, whether
+the candidate moves next door or to the far end. The region is lopsided rather
+than local: at the incumbent $(0,0)$ of a $10\times10$ subdivision with
+`max_step` $3$, all $100$ boxes are admitted; at $(7,6)$, only the incumbent
+itself, which the elimination constraints have already removed, so the master
+becomes infeasible and the run stops for reasons that have nothing to do with the
+problem. This is reported upstream.
 
 ```{image} ../_static/figures/trust_region.svg
 :class: only-light
-:alt: What each radius of the trust region reaches
+:alt: What each radius of the trust region reaches, under either metric
 ```
 
 ```{image} ../_static/figures/trust_region-dark.svg
 :class: only-dark
-:alt: What each radius of the trust region reaches
+:alt: What each radius of the trust region reaches, under either metric
 ```
 
+The design spaces of this package now set every weight to one, which makes the
+distance the **number of components a candidate changes**.
 
-**The default radius is smaller than the design space.** The largest distance is
-$\sum_j (m_j - 1)$, which is $18$ for the two variables and ten subdivisions of
-this benchmark, against the master's default `max_step` of $10$. The trust region
-is then active from the first iteration, and once it shrinks, an incumbent whose
-indexes are high cannot change any component at all: the master can only
-re-propose the incumbent, which has been eliminated, so the MILP becomes
-infeasible and the run stops. Instrumenting the last iteration of a run stopping
-at $14$ boxes shows exactly that: dropping either the elimination constraints or
-the trust region alone restores feasibility, neither alone is the cause.
+### Which metric wins
 
-{py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
-returns that largest distance, to be passed to the master.
+Four metrics, two variables, ten subdivisions, a budget of $1000$, eight
+starting points. `indexes` is the old catalogue-value default, `unit` the
+Hamming distance now used, `none` sets every weight to zero so that the
+constraint is vacuous, and `proximity` replaces the constraint altogether with
+$|v^\top\alpha' - v^\top\alpha| \le \texttt{max\_step}$ on the catalogue values
+$v$, injected into the master by the stub in `benchmarks/trust_region.py`:
 
-Sweeping the constant of the pure convexification at both radii, over eight
-starting points:
+| metric | Rastrigin | Ackley | Griewank |
+|--------|-----------|--------|----------|
+| `indexes`, step 18 | $0.000$ · 798 · 8/8 | $0.000$ · 450 · 6/8 | $0.027$ · 1000 · 0/8 |
+| `indexes`, step 10 | $0.000$ · 530 · 8/8 | $0.000$ · 450 · 6/8 | $0.027$ · 1000 · 0/8 |
+| `unit`, step 2 | $0.000$ · 543 · 8/8 | $0.000$ · 560 · 6/8 | $0.007$ · 618 · 0/8 |
+| **`unit`, step 1** | **$0.000$ · 452 · 8/8** | **$0.000$ · 496 · 8/8** | **$0.007$ · 526 · 0/8** |
+| `none` | $0.000$ · 810 · 8/8 | $0.000$ · 450 · 6/8 | $0.027$ · 1000 · 0/8 |
+| `proximity`, step 3 | see below | $0.000$ · 753 · 8/8 | $0.007$ · 1000 · 0/8 |
 
-| `max_step` | $\kappa = 10$ | $50$ | $100$ | $1000$ |
-|------------|---------------|------|-------|--------|
-| $10$, the master default | 0/8 | 5/8 | 6/8 | — |
-| $18$, the design space | 0/8 | **8/8** | **8/8** | 7/8 |
+The tight unit radius is the best cell of every column: it is the only metric
+reaching Ackley from all eight starting points, it is the cheapest on Rastrigin,
+and it gets closest on Griewank, which nothing solves.
 
-At its best constant, the pure convexification reaches the optimum from every
-starting point once the trust region is sized to the design space. Per starting
-point, the two runs that fail at $10$ both succeed at $18$, and every run solves
-a few more boxes:
+What is **not** true is that the ordinal proximity is the answer. It is the
+constraint the upstream docstring describes and the one that looked like the
+missing piece, and when it is tight it also reaches Ackley 8/8 — for $753$
+evaluations against $496$. So what buys the reliability is a **tight**
+neighbourhood, and the cheapest way to express one is to count components. The
+ordinal reading of a subdivision index buys nothing on a multimodal landscape,
+where the neighbouring box is no more alike than a distant one. Multimodality is
+closer to a categorical choice than to a discrete one.
 
-```text
-start box      max_step 10          max_step 18
-   [1, 4]   0.9950 (14 boxes)   0.0000 (20 boxes)
-   [3, 5]   0.9950 (16 boxes)   0.0000 (20 boxes)
-```
+### How wide the radius should be
 
-For the adaptive repair, which already reaches 8/8, the larger radius only costs:
-$47$ boxes and $606$ evaluations instead of $24$ and $308$, for the same optimum.
-Measured over the whole comparison of the formulations, it is the same story,
-the same reliability for up to twice the worst-case cost: the normalized
-formulation goes from $20$–$36$ boxes to $24$–$56$, still 8/8, and the constraint
-one from $24$–$28$ to $20$–$64$, still 7/8.
-So the radius buys exploration and is paid for in evaluations, which is what a
-trust region is for; the default configuration keeps the master's own value, and
-a problem on which the run stops early is a reason to raise it to
-`subdivision.max_step`.
+Five variables, ten subdivisions, a budget of $2500$, three starting points:
+
+| radius | Rastrigin | Ackley | Styblinski-Tang | Griewank |
+|--------|-----------|--------|-----------------|----------|
+| 1 | $0.000$ · 1230 · 2/3 | **$4.95$** · 2500 | **$0.000$ · 497 · 1/3** | $0.025$ · 2500 |
+| **2** | **$0.000$ · 2103 · 3/3** | $6.30$ · 2500 | $14.14$ · 598 · 1/3 | $0.027$ · 2500 |
+| 3 | $0.995$ · 1895 · 1/3 | $7.08$ · 2500 | $0.000$ · 951 · **2/3** | $0.025$ · 2500 |
+| 5 | $0.000$ · 2500 · 2/3 | $14.93$ · 2500 | $0.000$ · 1026 · **2/3** | $0.111$ · 2500 |
+
+Small. Ackley degrades monotonically as the radius grows, and Rastrigin is best
+at two, from every starting point. Over six starting points the same Rastrigin
+cell reaches the optimum $6/6$ for $1920$ evaluations, against $3/6$ at a radius
+of five, $2/6$ at the radius of the design space and $1/6$ with no region at all.
+Hence the default of two, `TRUST_REGION_RADIUS`.
+
+:::{warning}
+Styblinski-Tang is the exception and it is not a small one: at this density a
+radius of two is its **worst** setting, $14.14$ against $0.000$ at one, three and
+five. It is the same cell that stands out in the density sweep below. The default
+radius is therefore a good average over this benchmark and not a rule; a problem
+whose runs stall early is a reason to try the neighbouring radii before anything
+else.
+:::
 
 Deactivating the shrink instead, by setting `step_decreasing_activation` above
 the number of iterations, does not help: the run then ends on the stall counter
