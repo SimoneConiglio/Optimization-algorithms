@@ -47,15 +47,17 @@ counted in **executions of the objective discipline**:
 | formulation | method | objective | boxes solved | executions |
 |-------------|--------|-----------|--------------|------------|
 | constraint | enumeration | $0.0$ | 100 | 1427 |
-| constraint | outer approximation | $0.0$ | 24 to 28 | 346 to 404 |
+| constraint | outer approximation | $0.0$ | 24 to 36 | 341 to 521 |
 | normalized | enumeration | $0.0$ | 100 | 1267 |
-| normalized | outer approximation | $0.0$ | 20 to 36 | 254 to 470 |
+| normalized | outer approximation | $0.0$ | 20 to 36 | 255 to 458 |
 
-About **four times cheaper for the same optimum**. The normalized formulation
-reaches it from all eight starting points and the constraint one from seven, and
-it also enumerates for about 11% less, its sub-problems being bounded by their
-box instead of having to restore the feasibility of a box constraint. It is
-therefore the one to prefer, by a small margin.
+About **three times cheaper for the same optimum**, solving a quarter to a third
+of the boxes. Both formulations reach the optimum from seven starting points out
+of eight, so reliability no longer separates them; what does is cost. The
+normalized formulation enumerates for about 11% less, its sub-problems being
+bounded by their box instead of having to restore the feasibility of a box
+constraint, and its cheapest outer-approximation runs are cheaper still, $255$
+executions against $341$. It is therefore the one to prefer, by a small margin.
 
 ## Against the baselines
 

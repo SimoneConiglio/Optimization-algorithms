@@ -56,6 +56,7 @@ from benchmarks.baselines import BudgetedCounter
 from benchmarks.baselines import BudgetExceededError
 from benchmarks.configurations import CONFIGURATIONS
 from benchmarks.configurations import DEFAULT_CONFIGURATION
+from benchmarks.configurations import TRUST_REGION_RADIUS
 from benchmarks.problems import PROBLEMS
 from gemseo_box_subdivision.algos.design_space.box_design_space import (
     create_normalized_box_design_space,
@@ -174,10 +175,14 @@ def run(
         sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
         sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
     )
-    with suppress(BudgetExceededError):
+    settings = dict(CONFIGURATIONS[DEFAULT_CONFIGURATION])
+    settings["max_step"] = TRUST_REGION_RADIUS
+    # A budget spent inside a linearization leaves the discipline without its
+    # output, which GEMSEO then reports as a missing key.
+    with suppress(BudgetExceededError, KeyError):
         scenario.execute(
             BiLevelMasterOuterApproximation_Settings(
-                max_iter=10000, ub_tol=1e-4, **CONFIGURATIONS[DEFAULT_CONFIGURATION]
+                max_iter=10000, ub_tol=1e-4, **settings
             )
         )
 
