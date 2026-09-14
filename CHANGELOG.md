@@ -72,6 +72,16 @@ and this project adheres to
 
 ### Changed
 
+- The multi-resolution encoding, one categorical variable per level, is part of
+  the package rather than of the benchmarks: `MultiResolution` and
+  `MultiResolutionMapping`. It reaches $m^L$ subdivisions per component for
+  $n m L$ binaries, and on Styblinski-Tang at five variables, the problem the
+  best flat density breaks on, two levels of four get within $0.27$ of the
+  optimum on forty binaries against the eighty of the flat encoding that matches
+  it, for fewer evaluations.
+- The hierarchies of subdivisions are part of the package too,
+  `algos/opt/hierarchy.py`, driven by a callable that solves one level, so that
+  a shape can be applied to another problem without copying a benchmark.
 - The density of a subdivision is bounded above by a measurable ratio rather than
   by the number of boxes: the cut model carries as many coefficients as there are
   binaries, and a budget affords a few dozen cuts. On five variables, ten

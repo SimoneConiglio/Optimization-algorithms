@@ -64,6 +64,13 @@ Established:
   to promise, is worth nothing here: measured through a stub it is as reliable
   as counting components and half again as expensive, multimodality behaving
   like a categorical choice rather than a discrete one;
+- the multi-resolution encoding reaches a resolution on **fewer binaries**, two
+  levels of four reaching sixteen subdivisions per component on forty binaries
+  against eighty, and it is not worse at that resolution: on Styblinski-Tang,
+  the problem the best flat density breaks on, it gets within $0.27$ of the
+  optimum for fewer evaluations than the flat encoding that matches it. Its cost
+  is a cut model additive over the digits, so fewer and wider levels beat more
+  and narrower ones;
 - a hierarchy of subdivisions loses to the flat method wherever a flat
   subdivision can resolve the basins, and wins on the one case it cannot, a
   basin too broad for any affordable density: on Ackley at five variables the

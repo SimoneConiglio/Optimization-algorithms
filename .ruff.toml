@@ -141,12 +141,15 @@ convention = "google"
 
 [lint.per-file-ignores]
 "*.ipynb" = ["unnecessary-assign"]
-# The benchmarks report their measurements on the standard output.
-"benchmarks/**/*.py" = ["T"]
+# The benchmarks report their measurements on the standard output, and a measured
+# value that happens to fall near pi or tau is a measurement, not a constant.
+"benchmarks/**/*.py" = ["T", "math-constant"]
 "tests/*.py" = ["D", "pytest-unittest-assertion", "pytest-raises-too-broad", "pytest-unittest-raises-assertion", "PTH"]
 "docs/*.py" = [
   "T",
   "D",
+  # The figures embed measured results; a gap of 3.142 is not pi.
+  "math-constant",
   "useless-expression",
   "PTH",
   "line-too-long",

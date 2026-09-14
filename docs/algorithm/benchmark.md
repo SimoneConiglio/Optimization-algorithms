@@ -217,46 +217,66 @@ variable left out keeps all of its basins inside every box.
 
 **The multi-resolution encoding**, one categorical variable per level with the
 box index read off as its base-$m$ digits, is the one construction here that
-changes how many binaries a resolution costs. Rastrigin at five variables, three
-starting points, the same budget of $2500$:
+changes how many binaries a resolution costs. Five variables, three starting
+points, the same budget of $2500$, median distance to the optimum:
 
-| encoding | binaries | resolution | gap | cost | reached |
-|----------|----------|------------|-----|------|---------|
-| flat, $m=10$ | 50 | 10 | **$0.00$** | 2103 | **3/3** |
-| flat, $m=16$ | 80 | 16 | $1.99$ | 1706 | 0/3 |
-| levels $m=2$, $L=4$ | 40 | 16 | $2.99$ | 2500† | 0/3 |
-| levels $m=2$, $L=5$ | 50 | 32 | $5.25$ | 2338 | 0/3 |
-| **levels $m=4$, $L=2$** | **40** | **16** | **$1.99$** | 1953 | **1/3** |
-| levels $m=4$, $L=3$ | 60 | 64 | $3.14$ | 1409 | 1/3 |
-| levels $m=2$, $L=4$, positional | 40 | 16 | $7.04$ | 2500† | 0/3 |
+| encoding | binaries | resolution | Rastrigin | Ackley | Styblinski-Tang |
+|----------|----------|------------|-----------|--------|-----------------|
+| flat, $m=10$ | 50 | 10 | **$0.00$ · 3/3** | $6.30$† | $14.14$ · 1/3 |
+| flat, $m=16$ | 80 | 16 | $1.99$ | $12.63$† | **$0.00$ · 2/3** |
+| levels $m=2$, $L=4$ | 40 | 16 | $2.99$† | $7.08$† | $14.44$ |
+| levels $m=2$, $L=5$ | 50 | 32 | $5.25$ | $14.82$† | $14.70$ |
+| **levels $m=4$, $L=2$** | **40** | **16** | $1.99$ · 1/3 | $7.40$ | **$0.27$ · 1/3** |
+| levels $m=4$, $L=3$ | 60 | 64 | $3.14$ · 1/3 | **$6.28$**† | $5.67$ |
+| levels $m=2$, $L=4$, positional | 40 | 16 | $7.04$† | $16.81$† | $3.68$ · 1/3 |
 
 † stopped by the budget.
 
-**The construction does what it claims.** At a resolution of sixteen, the
-two-level encoding with $m=4$ matches the flat encoding's gap of $1.99$ on
-**half the binaries**, forty against eighty, and reaches the optimum from one
-starting point where the flat encoding reaches it from none. The saving is real
-and it grows: sixty binaries buy a resolution of sixty-four, which would cost
-$320$ flat.
+```{image} ../_static/figures/encodings.svg
+:class: only-light
+:alt: What the multi-resolution encoding buys, and what it costs
+```
 
-**And it does not help on this benchmark**, because the resolution it unlocks is
-past the density these problems want. Rastrigin peaks at ten subdivisions per
-variable, below every resolution in the table, so the encoding is cheaper at
-resolutions that are already too fine. Its best row is still worse than plain
-flat $m=10$, $1.99$ against $0.00$.
+```{image} ../_static/figures/encodings-dark.svg
+:class: only-dark
+:alt: What the multi-resolution encoding buys, and what it costs
+```
 
-**More levels are worse, not better.** Going from four levels to five, at the
-same branching, takes the gap from $2.99$ to $5.25$, and the three-level $m=4$
-row is worse than the two-level one. This is the model class rather than the
-resolution: the cut model is linear in the one-hot variables, so it is additive
-over the digits and cannot express that what a fine digit is worth depends on
-the coarse digit it sits inside. Every level added is another dimension over
-which that assumption is wrong.
+**The construction does what it claims.** Two levels of four reach a resolution
+of sixteen on **forty binaries** against the eighty of the flat encoding, and at
+that resolution they are not worse for it: $1.99$ against $1.99$ on Rastrigin,
+with one starting point reaching the optimum where flat $m=16$ reaches none, and
+$0.27$ against $0.00$ on Styblinski-Tang for **fewer evaluations**, $920$ against
+$973$. The saving grows with the resolution: sixty binaries buy sixty-four
+subdivisions per component, which would cost $320$ flat.
 
-**The positional weighting is the worst row of the table.** Weighing a level by
-what its digit is worth in the box index, rather than weighing every level
-alike, costs $7.04$ against $2.99$ — the same conclusion the flat encoding
-reached about the trust-region metric, in a second setting.
+**Styblinski-Tang is where it earns its place.** That problem is the one the
+density sweep breaks on: ten subdivisions per variable, the best density
+elsewhere, returns $14.14$ and reaches the optimum from one starting point out of
+three. Sixteen subdivisions fix it, and the cheapest way to sixteen is two levels
+of four, which gets within $0.27$ of the optimum on half the binaries of the flat
+encoding that matches it. Where the useful density is **above** what the binaries
+can afford, this is the construction that reaches it.
+
+**It does not rescue the problems whose difficulty is elsewhere.** On Rastrigin
+nothing beats plain flat $m=10$, whose resolution the encoding was never needed
+for, and on Ackley every configuration is truncated by the budget and none
+reaches the optimum, the difficulty there being a basin too broad for any
+resolution rather than a resolution too expensive.
+
+**Fewer, wider levels beat more, narrower ones.** At the same resolution of
+sixteen and the same forty binaries, $m=4, L=2$ beats $m=2, L=4$ on all three
+problems, by $1.99$ against $2.99$, $7.40$ against $7.08$ near enough, and
+$0.27$ against $14.44$. Adding levels is what makes the cut model's additivity
+bind: it is linear in the one-hot variables, so it can express what a level
+contributes on its own but not that a fine digit's effect depends on the coarse
+digit it sits inside, and each level is another dimension over which that is
+wrong. The five-level row is the worst unit row on two problems out of three.
+
+**The positional weighting stays the wrong choice**, worst on Rastrigin and
+Ackley by a wide margin, which is the trust-region metric conclusion reappearing
+in a second and independent setting: weighing a subdivision by its own index
+expresses a proximity the problem does not have.
 
 **A hierarchy** was built in three shapes. The deep one reaches the optimum of
 Ackley from four starting points out of six, which nothing else here does; none
