@@ -164,31 +164,59 @@ $$
 \ \ge\ \sum_j w_j(\alpha) - \texttt{max\_step},
 $$
 
-whose radius shrinks when the upper bound stops improving. The distance is not
-the number of boxes apart: the cost of moving is the sum of the **catalogue
-weights the incumbent selects** over the components the candidate changes, and
-the catalogue of a subdivided variable being the range of its subdivision
-indexes, leaving the first subdivision of a component is free and leaving the
-last one costs $m_j - 1$.
+whose radius shrinks when the upper bound stops improving. The constraint reads
+as a budget: a candidate $\alpha'$ pays $w_j(\alpha)$ for every component it
+changes, and may spend `max_step` in all.
+
+### What the weights have to be
+
+The weight charged is the one the **incumbent** selects, $w_j(\alpha)$, not
+anything about the category the candidate moves to. The constraint therefore
+cannot express a proximity between categories: whether a candidate moves to the
+neighbouring subdivision or to the far end of the range, it pays the same. This
+is the right constraint for a genuinely categorical variable, where no two
+categories are nearer than any others, and it is what the bilevel outer
+approximation was written for.
+
+A subdivided variable looks ordinal, and an earlier version of this package took
+the invitation, weighting each subdivision by its own index. That makes the
+region **lopsided rather than local**: leaving the first subdivision of a
+component is free, leaving the last costs $m_j - 1$, and neither has anything to
+do with where the candidate lands.
 
 ```{image} ../_static/figures/trust_region.svg
 :class: only-light
-:alt: What each radius of the trust region reaches
+:alt: What each radius of the trust region reaches, under either metric
 ```
 
 ```{image} ../_static/figures/trust_region-dark.svg
 :class: only-dark
-:alt: What each radius of the trust region reaches
+:alt: What each radius of the trust region reaches, under either metric
 ```
 
-The diameter of the design space in that distance is therefore
-$\sum_j (m_j - 1)$, which
+So the design spaces of this package weigh **every subdivision alike**,
+$w_j \equiv 1$, and the distance becomes the number of components a candidate
+changes, that is the Hamming distance between the two one-hot encodings. The
+diameter is then $n$, which
 {py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
-returns. Starting from it and letting the master shrink it is what the outer
-approximation assumes; starting below it confines the search from the first
-iteration, and the master's own default radius has nothing to do with the design
-space. This is the setting that decides whether a fine subdivision is usable at
-all, see [the benchmark](benchmark.md#the-density-of-the-subdivision-decides).
+returns, and that is the radius at which the region stops constraining, not the
+radius to use.
+
+Expressing the ordinal proximity properly would need a different constraint,
+$|v^\top\alpha' - v^\top\alpha| \le \texttt{max\_step}$ on the catalogue values
+$v$, which is not what the master builds. It was measured through a stub, in
+[annex C](tuning.md#the-trust-region-is-a-compromise-and-its-default-is-not-the-design-space), and
+it is not better: multimodality behaves like a categorical choice, neighbouring
+boxes being no more alike than distant ones.
+
+### How wide it should be
+
+Small. On Rastrigin with five variables and ten subdivisions, a radius of two
+components reaches the optimum from every starting point; widening it to the
+whole design space, or removing the region altogether, loses it. The region is
+what makes a fine subdivision usable at all, see
+[the benchmark](benchmark.md#the-density-of-the-subdivision-decides), and the
+measurements are in [annex C](tuning.md).
 
 ## Two formulations
 

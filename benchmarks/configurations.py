@@ -55,10 +55,14 @@ the convexity margin.
 
 A convexity margin on the **scale of the objective**: ``min_dfk`` is subtracted
 from an objective difference, so it is an absolute quantity in the units of the
-objective, not a ratio. On the Rastrigin benchmark, whose objective spans about
-eighty, a margin of thirty to a hundred reaches the optimum from every starting
-point, while a margin of ten reaches it from three out of eight and a margin of
-one from none. It has to be scaled to the problem.
+objective, not a ratio, and it has to be scaled to the problem. On the Rastrigin
+benchmark, whose objective spans about eighty, the margin crosses a threshold and
+then **saturates** rather than passing through a window: at two variables it
+reaches the optimum from one starting point out of eight at $1$, five at $10$,
+seven at $30$ and all eight at $100$ and at $300$; at five variables and ten
+subdivisions, from none at $10$, two out of three at $30$ and all three at $100$
+and at $300$. What an over-large margin costs is sub-problems, not quality, so
+the default sits at the first value that saturates.
 """
 
 PURE_CONVEXIFICATION = MappingProxyType({
@@ -71,23 +75,24 @@ PURE_CONVEXIFICATION = MappingProxyType({
 
 The constant has to dominate the concavity of the relaxed problem and no more.
 It is an absolute quantity, of the order of the variation of the objective over
-the design space, about eighty on the Rastrigin benchmark, where the useful
-window is fifty to a hundred: the optimum is then reached from every starting
-point for about a fifth of the cost of enumerating the boxes.
+the design space, about eighty on the Rastrigin benchmark, and unlike the
+convexity margin of the adaptive repair it passes through a genuine **window**:
+too small and the cuts stay invalid, too large and every unexplored box outranks
+the incumbent whatever the cuts say, so the master ranks them by nothing in
+particular.
 
-Below that window the cuts stay invalid and the master converges on a wrong
-point; above it, every unexplored box outranks the incumbent whatever the cuts
-say, so the master ranks them by nothing in particular and the result decays,
-six then five starting points out of eight, without the cost falling. An
-exaggerated constant is not a conservative choice, and the regime where the
-convergence argument would apply is out of reach anyway, the run ending on the
-trust region or on the stall counter rather than on its optimality test.
+The window narrows as the dimension grows. At two variables and ten
+subdivisions, constants of $30$ to $100$ reach the optimum from five or six
+starting points out of eight, against eight out of eight for the adaptive
+repair. At five variables the window is a single value of those tried, $50$,
+which reaches it from two starting points out of three, while $100$ misses and
+$200$ is far off.
 
-This window was measured with the trust region sized to the design space, that
-is with the master's ``max_step`` set to
-:attr:`.BoxSubdivision.max_step`; with the master's own default of ten, the same
-constants reach the optimum from five or six starting points out of eight.
-See `tune_convexification.py`.
+An exaggerated constant is therefore not a conservative choice, and the regime
+where the convergence argument would apply is out of reach anyway, the run ending
+on the trust region or on the stall counter rather than on its optimality test.
+This mechanism is kept for the argument it rests on rather than as a default;
+see `tune_convexification.py`.
 """
 
 CONFIGURATIONS = MappingProxyType({
