@@ -49,14 +49,14 @@ number of starting points from which the optimum was **reached**.
 
 | problem | $n$ | box subdivision | multistart | CMA-ES | DIRECT |
 |---------|-----|-----------------|------------|--------|--------|
-| Rastrigin | 2 | $0.00$ · 786 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
-| Rastrigin | 5 | $4.98$ · 899 · 0/3 | $3.98$ · 2500 · 0/3 | $8.96$ · 1945 · 0/3 | $4.98$ · 461 · 0/3 |
-| Ackley | 2 | $0.00$ · 422 · 2/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
-| Ackley | 5 | $9.71$ · 1388 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
-| Styblinski-Tang | 2 | $0.00$ · 240 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
-| Styblinski-Tang | 5 | $0.00$ · 466 · 3/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
-| Griewank | 2 | $0.01$ · 1000 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
-| Griewank | 5 | $0.06$ · 1644 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
+| Rastrigin | 2 | $0.00$ · 543 · 3/3 | $0.00$ · 1000 · 2/3 | $1.00$ · 631 · 0/3 | $0.00$ · 649 · 3/3 |
+| Rastrigin | 5 | $4.98$ · 823 · 0/3 | $3.98$ · 2500 · 0/3 | $8.96$ · 1945 · 0/3 | $4.98$ · 461 · 0/3 |
+| Ackley | 2 | $0.00$ · 347 · 2/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 745 · 3/3 | $0.00$ · 417 · 3/3 |
+| Ackley | 5 | $14.43$ · 892 · 0/3 | $9.55$ · 2500 · 0/3 | $0.00$ · 2009 · 3/3 | $0.11$ · 353 · 0/3 |
+| Styblinski-Tang | 2 | $0.00$ · 218 · 3/3 | $0.00$ · 1000 · 3/3 | $0.00$ · 535 · 2/3 | $0.00$ · 1011 · 3/3 |
+| Styblinski-Tang | 5 | $0.00$ · 458 · 2/3 | $0.00$ · 2340 · 3/3 | $0.00$ · 1457 · 2/3 | $0.00$ · 2505 · 3/3 |
+| Griewank | 2 | $0.01$ · 607 · 0/3 | $0.01$ · 1000 · 0/3 | $0.05$ · 643 · 0/3 | $0.01$ · 1011 · 0/3 |
+| Griewank | 5 | $0.06$ · 1016 · 0/3 | $0.05$ · 2500 · 0/3 | $0.03$ · 1769 · 0/3 | $0.01$ · 397 · 0/3 |
 
 ```{image} ../_static/figures/results.svg
 :class: only-light
@@ -69,18 +69,24 @@ number of starting points from which the optimum was **reached**.
 ```
 
 **Where it works, it is the cheapest.** Styblinski-Tang in five dimensions is
-solved from every starting point for $466$ evaluations, against $2340$ for
-multistart, $1457$ for CMA-ES and $2505$ for DIRECT: the same answer, three to
-five times cheaper.
+solved for $458$ evaluations, against $2340$ for multistart, $1457$ for CMA-ES
+and $2505$ for DIRECT: the same answer, three to five times cheaper. In two
+dimensions it is the cheapest column on three problems out of four, $543$, $347$
+and $218$ evaluations, roughly half of what the next method spends.
 
 **It is not the most reliable.** On Ackley in five dimensions CMA-ES reaches the
-optimum every time and the method does not; on Griewank, DIRECT is closer. And
-DIRECT is a serious baseline at low dimension, cheap and reliable, so any claim
-for the method has to be made against it rather than against multistart alone.
+optimum every time and the method does not; on Griewank, DIRECT is closer at a
+fraction of the cost. DIRECT is a serious baseline at low dimension, cheap and
+reliable, so any claim for the method has to be made against it rather than
+against multistart alone.
 
-**The table understates the five-variable rows**, which use the default
-subdivision of two per variable. At ten per variable Rastrigin is solved, as the
-next section shows, and nothing else in this table does that.
+**The five-variable rows are the method at its default density**, two
+subdivisions per variable, which bounds the enumeration and is not the best
+choice for three of these four problems. At ten subdivisions per variable
+Rastrigin in five dimensions is solved from every starting point for about $2100$
+evaluations, which **no baseline here achieves at any budget tried**, and Ackley
+and Griewank both improve as well. The next section is that sweep, and it is
+where the method's case actually rests.
 
 :::{warning}
 **These numbers are measurements, not a claim of generalization.** The convexity
