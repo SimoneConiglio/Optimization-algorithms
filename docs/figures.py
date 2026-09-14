@@ -310,47 +310,57 @@ def draw_convexification(foreground: str):
 
 
 def draw_trust_region(foreground: str):
-    """Draw what the radius of the trust region reaches."""
-    figure, axes_pair = plt.subplots(1, 2, figsize=(7.4, 3.4), sharey=True)
+    """Draw what the radius of the trust region reaches, under either metric."""
+    figure, axes_triple = plt.subplots(1, 3, figsize=(8.6, 3.3), sharey=True)
     indexes = arange(10)
     incumbent = (7, 6)
-    for axes, radius in zip(axes_pair, (10, 18), strict=True):
+    panels = (
+        ("catalogue values, radius 10", "indexes", 10),
+        ("components changed, radius 1", "unit", 1),
+        ("components changed, radius 2", "unit", 2),
+    )
+    for axes, (title, metric, radius) in zip(axes_triple, panels, strict=True):
         for i in indexes:
             for j in indexes:
-                changed = (i != incumbent[0]) * incumbent[0] + (j != incumbent[1]) * (
-                    incumbent[1]
-                )
-                reachable = changed <= radius
+                if metric == "unit":
+                    # Every subdivision weighs one, so the cost of a candidate
+                    # is the number of components it changes.
+                    cost = (i != incumbent[0]) + (j != incumbent[1])
+                else:
+                    # The weight charged is the index the *incumbent* holds, so
+                    # leaving the first subdivision is free and leaving the last
+                    # one costs nine, wherever the candidate goes.
+                    cost = (i != incumbent[0]) * incumbent[0] + (
+                        j != incumbent[1]
+                    ) * incumbent[1]
+
                 axes.add_patch(
                     plt.Rectangle(
                         (i - 0.5, j - 0.5),
                         1.0,
                         1.0,
-                        facecolor=SECOND if reachable else "none",
-                        alpha=0.35 if reachable else 1.0,
+                        facecolor=SECOND if cost <= radius else "none",
+                        alpha=0.35 if cost <= radius else 1.0,
                         edgecolor=foreground,
                         linewidth=0.4,
                     )
                 )
 
         axes.plot(
-            [incumbent[0]], [incumbent[1]], marker="s", color=ACCENT, markersize=9
+            [incumbent[0]], [incumbent[1]], marker="s", color=ACCENT, markersize=8
         )
         axes.set_xlim(-0.6, 9.6)
         axes.set_ylim(-0.6, 9.6)
         axes.set_aspect("equal")
         axes.set_xlabel("box index of $x_1$")
-        axes.set_title(
-            f"radius {radius}"
-            + ("  (the master's default)" if radius == 10 else "  (the design space)")
-        )
+        axes.set_title(title, fontsize=9)
 
-    axes_pair[0].set_ylabel("box index of $x_2$")
+    axes_triple[0].set_ylabel("box index of $x_2$")
     figure.suptitle(
-        "Moving a component costs the index the incumbent holds, "
-        "not the distance travelled",
+        "The catalogue values charge where the incumbent sits, not how far "
+        "the candidate moves",
         fontsize=9.5,
-        y=1.06,
+        y=1.02,
     )
     return figure
 

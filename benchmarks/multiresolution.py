@@ -414,7 +414,6 @@ def main() -> None:
                     BUDGET,
                     adjoint=True,
                     n_subdivisions=subdivisions,
-                    overrides={"max_step": DIMENSION * (subdivisions - 1)},
                 )
                 for seed in SEEDS
             ]
