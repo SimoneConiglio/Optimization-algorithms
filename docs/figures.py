@@ -800,22 +800,37 @@ def draw_extensions(foreground: str):
 
 def draw_density(foreground: str):  # noqa: ARG001
     """Draw what the subdivision density does at five variables."""
-    figure, axes = plt.subplots(figsize=(6.0, 3.2))
+    figure, axes = plt.subplots(figsize=(7.2, 3.4))
     labels = ("Rastrigin", "Ackley", "Styblinski-Tang", "Griewank")
-    coarse = (4.98, 9.71, 0.0, 0.06)
-    fine = (0.0, 7.08, 0.0, 0.11)
+    # Median distance to the optimum, five variables, budget 2500.
+    gaps = {
+        2: (4.975, 14.430, 0.0, 0.061),
+        4: (6.700, 12.632, 0.0, 0.224),
+        10: (0.0, 6.302, 14.137, 0.027),
+        16: (1.990, 12.632, 0.0, 0.054),
+        24: (3.589, 8.526, 14.435, 0.084),
+    }
+    colours = ("#adb5bd", SECOND, ACCENT, THIRD, "#862e9c")
     positions = arange(len(labels))
-    axes.bar(
-        positions - 0.2, coarse, 0.4, color=SECOND, label="2 subdivisions (32 boxes)"
-    )
-    axes.bar(
-        positions + 0.2, fine, 0.4, color=ACCENT, label=r"10 subdivisions ($10^5$)"
-    )
+    width = 0.17
+    for index, (density, values) in enumerate(gaps.items()):
+        axes.bar(
+            positions + (index - 2) * width,
+            values,
+            width,
+            color=colours[index],
+            label=f"$m={density}$ ({5 * density} binaries)",
+        )
+
     axes.set_xticks(positions)
     axes.set_xticklabels(labels, rotation=12, ha="right")
     axes.set_ylabel("distance to the optimum")
-    axes.set_title("Five variables: refining pays only where the basins need it")
-    axes.legend(fontsize=8)
+    axes.set_title(
+        "Five variables: the useful density sits between the basins and the binaries",
+        fontsize=10,
+        pad=24,
+    )
+    axes.legend(ncols=5, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, 1.12))
     return figure
 
 

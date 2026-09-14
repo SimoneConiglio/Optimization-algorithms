@@ -97,15 +97,17 @@ with the dimension, but the master does not see it: it sees the **one-hot
 binaries**, $\sum_j m_j$, which grow linearly. Five variables with ten
 subdivisions each is $100\,000$ boxes and only $50$ binaries.
 
-Five variables, the `adaptive` configuration, the trust region sized to the
-design space:
+Five variables, the `adaptive` configuration, a budget of $2500$, three starting
+points. The median distance to the optimum, the median cost, and the number of
+starting points reaching it:
 
-| problem | $m = 2$ (32 boxes) | $m = 10$ ($10^5$ boxes) |
-|---------|--------------------|-------------------------|
-| Rastrigin | $4.98$ · 899 · 0/3 | **$0.00$ · 3357 · 2/3** |
-| Ackley | $9.71$ · 1429 · 0/3 | $7.08$ · 4665 · 0/3 |
-| Styblinski-Tang | **$0.00$ · 466 · 3/3** | $0.00$ · 905 · 1/3 |
-| Griewank | **$0.06$ · 1644 · 0/3** | $0.11$ · 4964 · 0/3 |
+| $m$ | binaries | boxes | Rastrigin | Ackley | Styblinski-Tang | Griewank |
+|-----|----------|-------|-----------|--------|-----------------|----------|
+| 2 | 10 | $32$ | $4.98$ · 823 | $14.43$ · 892 | $0.00$ · 458 · 2/3 | $0.06$ · 1016 |
+| 4 | 20 | $10^3$ | $6.70$ · 714 | $12.63$ · 1277 | **$0.00$ · 846 · 3/3** | $0.22$ · 1547 |
+| **10** | **50** | $10^5$ | **$0.00$ · 2103 · 3/3** | **$6.30$** · 2500 | $14.14$ · 598 · 1/3 | **$0.03$** · 2500 |
+| 16 | 80 | $10^6$ | $1.99$ · 1706 | $12.63$ · 2500 | $0.00$ · 973 · 2/3 | $0.05$ · 2500 |
+| 24 | 120 | $8 \cdot 10^6$ | $3.59$ · 1628 | $8.53$ · 2500 | $14.44$ · 1098 · 1/3 | $0.08$ · 2500 |
 
 ```{image} ../_static/figures/density.svg
 :class: only-light
@@ -117,41 +119,47 @@ design space:
 :alt: What the density of the subdivision does at five variables
 ```
 
-**Rastrigin in five dimensions is solved**, from two starting points out of
-three, for about $3400$ evaluations, which no baseline achieves at any budget
-tried here. Ackley improves for three times the cost. Styblinski-Tang and
-Griewank, whose basins two subdivisions per variable already separate, only get
-more expensive.
+**Rastrigin in five dimensions is solved**, from every starting point, for about
+$2100$ evaluations, which no baseline achieves at any budget tried here. That is
+the headline of the whole benchmark, and it needs ten subdivisions per variable:
+at two or four the problem is not solved at all.
 
-Refining further stops paying, and the point where it turns over is the ratio of
-the methodology: the cut model has $\sum_j m_j$ coefficients, and a budget buys a
-few dozen cuts to identify them. Sweeping past the density above, with the radius
-sized to the diameter each time:
+**There is a ceiling, and it is the binaries.** Past ten subdivisions the quality
+falls away on Rastrigin, $1.99$ at sixteen and $3.59$ at twenty-four, while the
+cost falls too, which is the signature of a run ending early rather than
+searching harder. The cut model carries $\sum_j m_j$ coefficients and a budget
+buys a few dozen cuts to identify them, so a subdivision is usable while its
+**binaries stay below the sub-problems a budget can pay for**. Fifty against
+about fifty is the edge; eighty is past it. This is the rule the number of boxes
+never gave: $10^5$ boxes are fine and $10^6$ are not, for a reason that has
+nothing to do with either figure.
 
-| problem | budget | $m=10$ (50 binaries) | $m=16$ (80) | $m=24$ (120) |
-|---------|--------|----------------------|-------------|--------------|
-| Rastrigin | $2500$ | **$1.00$, 2/6** | $4.38$ | $6.96$ |
-| Rastrigin | $5000$ | **$0.50$, 3/6** | $3.39$ | $6.83$ |
-| Ackley | $2500$ | **$10.15$** | $16.61$ | $14.42$ |
-| Ackley | $5000$ | **$8.11$, 1/6** | $9.63$ | $11.66$ |
+**There is also a floor, and it is the basins.** The subdivision has to separate
+the minima, which is why Rastrigin needs ten: its basins are about one unit apart
+over a range of ten.
 
-Ten subdivisions per variable is a sweet spot rather than a floor: at sixteen the
-model carries eighty coefficients against the fifty or so cuts the budget
-affords, and the quality collapses whatever the number of boxes it could
-represent. So a subdivision is usable while its **binaries stay below the
-sub-problems a budget can pay for**, which is the rule the number of boxes never
-gave.
+**And refining past the basins is not free.** Styblinski-Tang has two basins per
+variable and is solved at two and four subdivisions; at ten it is not, $14.14$
+and one starting point out of three. Ten subdivisions cut each of its basins into
+five boxes, and a box holding no minimum of its own returns a value and a
+sensitivity that say nothing about where the minimum is, so the ranking degrades.
+The same reversal appears under the pure convexification and under three of the
+four trust-region radii, in [annex C](tuning.md#the-density-and-the-mechanism-are-not-independent),
+so it belongs to the subdivision and not to the master.
 
-So the subdivision has to **resolve the basins** of the landscape, and it can
-afford to, up to that ratio; refining past the basins spends sub-problems on
-boxes that were already unimodal. Two settings decide whether that is reachable, the radius of the trust
-region and the convexity margin, both in [annex C](tuning.md).
+So the useful density sits between the basins and the binaries, and **no single
+value serves all four problems**: ten is best for three of them and worst for the
+fourth. The default of `benchmarks/baselines.py` bounds the enumeration rather
+than guessing, and the density is the first thing to sweep on a new problem.
 
 :::{note}
-An earlier version of this page reported this density as a failure and concluded
-that densely multimodal landscapes were out of reach. That measurement was made
-with the trust region of the master four times smaller than the design space,
-which is its default and is unrelated to the problem.
+An earlier version of this page reported this sweep as a collapse past ten
+subdivisions and concluded that densely multimodal landscapes were out of reach.
+That measurement was made with the trust region of the master charging the
+catalogue values of the boxes, which is not a distance; see
+[annex C](tuning.md#what-the-constraint-actually-measures). The ceiling survives
+the correction, the collapse does not, and Rastrigin at five variables went from
+a gap of $1.00$ and two starting points out of six to a solve from all six.
 :::
 
 ## The extensions, and what they are worth
