@@ -18,6 +18,7 @@
 
    gemseo_box_subdivision.algos.design_space.box_subdivision
    gemseo_box_subdivision.algos.design_space.box_design_space
+   gemseo_box_subdivision.algos.design_space.multi_resolution
 ```
 
 ## Disciplines
@@ -29,5 +30,6 @@
 
    gemseo_box_subdivision.disciplines.box_constraint
    gemseo_box_subdivision.disciplines.box_mapping
+   gemseo_box_subdivision.disciplines.multi_resolution_mapping
    gemseo_box_subdivision.disciplines.scenario_adapters.box_start
 ```

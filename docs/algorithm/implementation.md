@@ -139,8 +139,9 @@ comparison isolate the exploration strategy.
 
 ## The extensions
 
-Three extensions of the method are implemented, two in the package and one as a
-prototype in the benchmarks.
+Four extensions of the method are implemented, three in the package, so that they
+can be applied to another problem by importing them, and one as a prototype in
+the benchmarks.
 
 ### Subdividing some of the variables only
 
@@ -157,13 +158,48 @@ subdivision = BoxSubdivision.from_design_space(design_space, 10, ["x_split"])
 Nothing else changes: {class}`.BoxMapping` maps the subdivided variables alone,
 and the master carries binaries for them alone.
 
+### The multi-resolution encoding
+
+{py:class}`~gemseo_box_subdivision.algos.design_space.multi_resolution.MultiResolution`
+is the counterpart of `BoxSubdivision` for a box chosen by one categorical
+variable per level, and
+{py:class}`~gemseo_box_subdivision.disciplines.multi_resolution_mapping.MultiResolutionMapping`
+the counterpart of `BoxMapping` for it. The pair is used exactly as the flat one
+is, the mapping chained before the objective discipline:
+
+```python
+subdivision = MultiResolution(lower_bounds, upper_bounds, branching=4, levels=2)
+space = subdivision.create_design_space()
+```
+
+Three details carry the construction.
+
+**`locate` is a base conversion.** Placing a design value means writing its
+position in the range in base $m$ and reading off $L$ digits, each of which
+becomes the one-hot vector of a level. `compute_bounds` is the inverse, summing
+what each digit contributes.
+
+**The Jacobian blocks are constant.** The width $\Delta_j m^{-L}$ does not depend
+on the levels, so the derivative with respect to a level is the value that digit
+contributes and the derivative with respect to the normalized point is the width
+of the smallest box. Neither depends on the other inputs, which is what keeps the
+post-optimal sensitivity of the `Benders` formulation valid.
+
+**The catalogue weights are ones.** `create_design_space` sets them explicitly,
+so that the distance of the trust region counts the digits a candidate changes
+rather than what those digits are worth.
+
 ### The radius of the trust region
 
 {py:attr}`~gemseo_box_subdivision.algos.design_space.box_subdivision.BoxSubdivision.max_step`
-returns the diameter of the design space in the distance the master uses,
-$\sum_j (m_j - 1)$, which is what its `max_step` should start from. It is a
-property of the subdivision rather than a setting, and its docstring records the
-metric, the catalogue weights being the subdivision indexes.
+returns the radius at which the region stops constraining the master, which with
+unit catalogue weights is the number of subdivided components. It is a property
+of the subdivision rather than a setting, and its docstring records that it is
+**not** the radius to use.
+{py:attr}`~gemseo_box_subdivision.algos.design_space.multi_resolution.MultiResolution.max_step`
+returns the same quantity for the multi-resolution encoding, which has one
+one-hot group per level per component and therefore a radius scaled by the number
+of levels.
 
 ### The hierarchies
 
@@ -198,5 +234,8 @@ of every solved box.
   sub-problem is compared with the exact slope of the objective.
 - The one-hot layout of the design space and of the disciplines are
   cross-checked, so a disagreement cannot pass silently.
+- The Jacobian of `MultiResolutionMapping` is verified against finite
+  differences, and `locate` against `compute_bounds`: every box returned must
+  contain the value that selected it.
 - The border-box degeneracy is pinned by a regression test that asserts both the
   broken behaviour without a margin and the correct one with it.
