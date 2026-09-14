@@ -10,9 +10,40 @@
 # Implementation
 
 The package contributes building blocks to GEMSEO rather than a monolithic
-algorithm: the subdivision, the two ways of confining a sub-problem to a box,
-the design spaces of both levels, and a scenario adapter. They are assembled
-into a `Benders` scenario, as shown in [Usage](usage.md).
+algorithm: the subdivision, the two ways of confining a sub-problem to a box, the
+design spaces of both levels, and a scenario adapter. Assembling them is not left
+to the caller, because the assembly is a set of invariants rather than a set of
+choices.
+
+## The layers
+
+```text
+BoxSubdivisionScenario        a GEMSEO scenario; owns the assembly
+   └── BoxSubdivisionSettings the settings, in the units the method measures
+          └── subdivisions/   how a design space is cut into boxes
+              design_spaces   the design spaces a subdivision builds
+              disciplines/    the mapping, the constraint, the adapter
+              hierarchy       refining a box rather than subdividing finely
+```
+
+{py:class}`~gemseo_box_subdivision.scenario.BoxSubdivisionScenario` derives from
+`MDOScenario` and builds the composition in its constructor: it chains the
+mapping in front of the objective, builds the design space from the **same**
+subdivision, derives the names the master optimizes over from the design space
+rather than from a literal, selects the `Benders` formulation, and for the
+constraint formulation wires the scenario adapter and declares the box
+constraint. Its `execute` supplies the settings of the master, so a run needs no
+configuration of the master at all.
+
+{py:class}`~gemseo_box_subdivision.settings.BoxSubdivisionSettings` names those
+settings in the terms of the methodology, a `trust_region_radius` in components
+changed rather than a `max_step` in unexplained units, and its
+`to_master_settings` is the only place that translates them. It is also where the
+two mechanisms are kept apart: choosing one zeroes the other's constant, so a run
+can never measure an average of the two.
+
+Everything below those two is public and usable on its own, which is what
+[Usage](usage.md) calls composing by hand.
 
 ## The subdivision
 
@@ -195,11 +226,15 @@ rather than what those digits are worth.
 returns the radius at which the region stops constraining the master, which with
 unit catalogue weights is the number of subdivided components. It is a property
 of the subdivision rather than a setting, and its docstring records that it is
-**not** the radius to use.
+**not** the radius to use; `BoxSubdivisionSettings.trust_region_radius` is.
+
 {py:attr}`~gemseo_box_subdivision.subdivisions.multi_resolution.MultiResolution.max_step`
 returns the same quantity for the multi-resolution encoding, which has one
-one-hot group per level per component and therefore a radius scaled by the number
-of levels.
+one-hot group per level per component. That is why the scenario scales the
+radius by the number of levels before executing: two whole variables is $2L$
+groups there against $2$ in the flat encoding, and leaving it unscaled measures
+the encoding with a region far tighter than the one it is being compared
+against.
 
 ### The hierarchies
 
@@ -264,3 +299,11 @@ at equal cost.
   a level returning no solved box ends the search.
 - The border-box degeneracy is pinned by a regression test that asserts both the
   broken behaviour without a margin and the correct one with it.
+- The scenario is checked to derive the master's variables from the design space,
+  by building the same problem for a variable that is not called `x`, and to
+  select the right adapter and constraint for each formulation. The settings are
+  checked to keep the two mechanisms apart in both directions, one constant on
+  and the other off.
+- The entry point is checked to reproduce a hand-composed run to the digit, and
+  the benchmarks are run through it, so that a change to the assembly shows up as
+  a change to the published numbers rather than passing unnoticed.

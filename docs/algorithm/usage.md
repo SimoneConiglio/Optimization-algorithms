@@ -168,78 +168,57 @@ measured. What it achieves is in
 ## Refining a box, and hierarchies
 
 A box of a subdivision is an ordinary design space, so refining it is running the
-method again inside its bounds:
+method again inside its bounds. The three shapes described in
+[the methodology](methodology.md#hierarchies-of-subdivisions) are in the package,
+and each is a loop around the method rather than a change to it: you give it a
+callable that solves one level and reports the boxes it solved, which leaves you
+your own scenario and your own accounting of the budget.
 
 ```python
-lower, upper = subdivision.compute_bounds("x", one_hot)
+from gemseo.algos.design_space import DesignSpace
 
-refined = DesignSpace()
-refined.add_variable("x", lower_bound=lower, upper_bound=upper, size=lower.size)
-refined_subdivision = BoxSubdivision.from_design_space(refined, 5)
-```
-
-Which box to refine is the whole question, and the two scores available are the
-value of the sub-problem solved inside a box, read from the database of the
-master, and the cut model of the master, which estimates every box:
-
-```python
-problem = scenario.formulation.optimization_problem
-name = problem.objective.name
-solved = [
-    (array(key.unwrap()).ravel(), values[name], values[f"@{name}"])
-    for key, values in problem.database.items()
-    if values.get(name) is not None and values.get(f"@{name}") is not None
-]
-```
-
-The three shapes described in
-[the methodology](methodology.md#hierarchies-of-subdivisions) are in the package.
-Each is a loop around the method, so it is driven by a callable that solves one
-level and reports the boxes it solved: you keep the construction of your own
-scenario and your own accounting of the budget, and return **no solved box** when
-that budget is spent.
-
-```python
-from gemseo_box_subdivision.hierarchy import read_solved_boxes, refine_deep
+from gemseo_box_subdivision import (
+    BoxSubdivisionScenario,
+    read_solved_boxes,
+    refine_deep,
+)
 
 
-def solve(lower, upper, n_subdivisions):
+def solve(lower_bound, upper_bound, n_subdivisions):
     """Run the method once over these bounds."""
-    space = DesignSpace()
-    space.add_variable("x", lower_bound=lower, upper_bound=upper, size=lower.size)
-    subdivision = BoxSubdivision.from_design_space(space, n_subdivisions)
-    scenario = create_scenario(
-        [MDOChain([BoxMapping(subdivision), objective_discipline])],
-        "f",
-        create_normalized_box_design_space(subdivision, space),
-        formulation_name="Benders",
-        main_problem_design_variables=["x_box"],
-        sub_problem_algo_settings=SLSQP_Settings(max_iter=40),
-        sub_problem_formulation_settings=DisciplinaryOpt_Settings(),
-    )
     if budget_is_spent():
-        return subdivision, []
+        # No solved box ends the search, which is how a budget ends it.
+        return None, []
 
-    scenario.execute(settings)
-    problem = scenario.formulation.optimization_problem
-    return subdivision, read_solved_boxes(problem)
+    space = DesignSpace()
+    space.add_variable(
+        "x", lower_bound=lower_bound, upper_bound=upper_bound, size=lower_bound.size
+    )
+    scenario = BoxSubdivisionScenario(
+        [objective_discipline], "f", space, n_subdivisions=n_subdivisions
+    )
+    scenario.execute()
+    return scenario.subdivision, read_solved_boxes(
+        scenario.formulation.optimization_problem
+    )
 
 
 visited = refine_deep(solve, lower_bound, upper_bound, branching=2, depth=4)
 ```
 
+`read_solved_boxes` reads back the value and the post-optimal sensitivity of
+every box the master solved, which is what the shapes rank on.
 `refine_two_levels` and `refine_frontier` take the same callable, and each
-returns the bounds of every region it visited. `benchmarks/hierarchy.py` wires
-this to the benchmark problems, sharing one budget between the levels so that a
-hierarchy and a flat run are compared at equal cost:
+returns the bounds of every region it visited.
 
-```python
-from benchmarks.hierarchy import run_deep, run_frontier, run_hierarchical
+Which box to refine is the whole question, and the rules are in `RANKINGS`:
+`"value"` ranks the boxes whose sub-problem was solved, `"cuts"` ranks **every**
+box of the subdivision by the cut model of the master, which is defined at boxes
+it never solved, and `"mixed"` alternates the two.
 
-run_hierarchical(problem, 5, seed=11, budget=2500, coarse=2, fine=5, ranking="cuts")
-run_deep(problem, 5, seed=11, budget=2500, branching=2, depth=4)
-run_frontier(problem, 5, seed=11, budget=2500, expansions=10, score="optimistic")
-```
+`benchmarks/hierarchy.py` wires this to the benchmark problems, sharing one
+budget between the levels so that a hierarchy and a flat run are compared at
+equal cost.
 
 :::{warning}
 None of the three beats the flat subdivision on a problem a flat subdivision can
@@ -283,21 +262,22 @@ DOELibraryFactory().execute(
 The order below is the one the measurements support, and it is deliberately not
 the order in which the constructions were built.
 
-1. **Start flat and coarse.** A subdivision of two or four per variable, the
-   `adaptive` configuration, `max_step=2`. This is cheap and tells you whether
-   the landscape is one the method suits at all.
-2. **Scale the convexity margin to the objective.** `min_dfk` is subtracted from
-   an objective difference, so it is absolute, in the units of *your* objective,
-   and a value tuned on another problem means nothing. Take the range of the
-   objective over the design space as a first value. It crosses a threshold and
-   then saturates, so erring high costs sub-problems rather than quality.
+1. **Start flat and coarse.** `n_subdivisions=2` or `4`, everything else left at
+   its default. This is cheap and tells you whether the landscape is one the
+   method suits at all.
+2. **Scale the convexity margin to the objective.** `convexity_margin` is
+   subtracted from an objective difference, so it is absolute, in the units of
+   *your* objective, and a value tuned on another problem means nothing. Take the
+   range of the objective over the design space as a first value. It crosses a
+   threshold and then saturates, so erring high costs sub-problems rather than
+   quality.
 3. **Sweep the density before anything else.** It moves results further than any
    other choice, and it has a floor and a ceiling: fine enough to separate the
    basins, coarse enough that the binaries stay below the sub-problem solves the
    budget affords. Refining past the basins actively degrades the ranking, so
    more is not safer.
-4. **Then try the radius either side of two.** It is the second most decisive
-   setting and it is cheap to test.
+4. **Then try `trust_region_radius` either side of two.** It is the second most
+   decisive setting and it is cheap to test.
 5. **Only then reach for a construction**, using the table above to choose
    which; each answers one specific reason for the flat subdivision to fail.
 
@@ -306,12 +286,20 @@ each separately, and the budget question is worth settling too: a run whose cost
 equals its budget was stopped rather than finished, so raise the budget until the
 cost stops moving before comparing anything, see
 [the results](benchmark.md#does-more-budget-change-the-answer).
+
 ## Composing it by hand
 
 The classes underneath stay public, and
 [the implementation](implementation.md) describes them. Use them when you need a
-composition the entry point does not cover; otherwise prefer the entry point,
-which is what the tests and the benchmarks use.
+composition :class:`.BoxSubdivisionScenario` does not cover; otherwise prefer the
+scenario, which is what the tests and the benchmarks use.
+
+The table below names the settings of the master in **its** terms rather than the
+package's, which is what you need when composing by hand.
+:class:`.BoxSubdivisionSettings` is the translation:
+`convexity_margin` is `min_dfk`, `trust_region_radius` is `max_step`, and
+`mechanism` chooses which of `adapt` and `convexification_constant` is active
+while switching the other off.
 
 ### The settings of the master, in their own terms
 
