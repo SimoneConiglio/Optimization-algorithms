@@ -68,3 +68,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+# A build off a tag is exactly that tag; a build between tags is a plain dev
+# version. The default appends the commit as a PEP 440 local segment, which both
+# PyPI and TestPyPI reject, so an untagged rehearsal could never be uploaded.
+local_scheme = "no-local-version"

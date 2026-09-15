@@ -26,7 +26,14 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.1.0 (2026-09-15)
+
+First public release.
+
+The method, its four constructions and the benchmark that measures them. The
+results are measurements on the problems reported, not a claim of generalization:
+the settings were tuned on those very problems, and the convexity margin is in
+the units of the objective, so it does not transfer between them unchanged.
 
 ### Fixed
 
