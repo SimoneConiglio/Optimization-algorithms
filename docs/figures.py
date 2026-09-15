@@ -93,6 +93,40 @@ def partly_multimodal(x, y):
     return 10.0 + x**2 - 10.0 * cos(2 * pi * x) + y**2
 
 
+SERIES_LIGHT = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4")
+"""The categorical hues of the five methods, on a light surface.
+
+Taken in this fixed order and never cycled, so that a method keeps its hue in
+every figure. Validated for the lightness band, the chroma floor, colour-vision
+separation and contrast; the light steps sit below 3:1 against the surface, which
+is why every figure using them is accompanied by its table.
+"""
+
+SERIES_DARK = ("#3987e5", "#d95926", "#199e70", "#c98500", "#d55181")
+"""The same five hues stepped for a dark surface, not an automatic flip."""
+
+METHOD_LABELS = (
+    "box subdivision",
+    "multistart",
+    "CMA-ES",
+    "DIRECT",
+    "EGO",
+)
+"""The methods, in the order their hues are assigned."""
+
+
+def series(foreground: str) -> tuple[str, ...]:
+    """Return the hues of the methods for the theme being drawn.
+
+    Args:
+        foreground: The foreground colour of the theme.
+
+    Returns:
+        The hue of each method, in the order of :data:`.METHOD_LABELS`.
+    """
+    return SERIES_LIGHT if foreground == LIGHT else SERIES_DARK
+
+
 def _style(foreground: str) -> dict[str, object]:
     """Return the style of a theme.
 
@@ -1041,6 +1075,145 @@ def draw_encodings(foreground: str):
     return figure
 
 
+SMALL_BUDGET = {
+    # problem, dimension -> per method: (gap, reached out of three, seconds per run)
+    ("Rastrigin", 2): (
+        (0.000, 3, 1.0),
+        (0.000, 2, 0.2),
+        (0.995, 0, 0.1),
+        (0.000, 3, 0.02),
+        (0.000, 2, 147.9),
+    ),
+    ("Ackley", 2): (
+        (0.000, 2, 0.6),
+        (9.581, 0, 0.2),
+        (0.000, 3, 0.1),
+        (0.000, 3, 0.02),
+        (0.320, 0, 161.9),
+    ),
+    ("Styblinski-Tang", 2): (
+        (0.000, 3, 0.7),
+        (0.000, 3, 0.1),
+        (0.000, 2, 0.04),
+        (0.000, 3, 0.02),
+        (0.286, 0, 0.1),
+    ),
+    ("Griewank", 2): (
+        (0.007, 0, 0.9),
+        (0.067, 0, 0.1),
+        (0.048, 0, 0.04),
+        (0.009, 0, 0.02),
+        (0.008, 0, 160.5),
+    ),
+    ("Rastrigin", 5): (
+        (8.572, 0, 0.5),
+        (9.950, 0, 0.2),
+        (11.204, 0, 0.04),
+        (4.976, 0, 0.02),
+        (1.994, 0, 439.7),
+    ),
+    ("Ackley", 5): (
+        (14.430, 0, 0.4),
+        (17.062, 0, 0.1),
+        (0.052, 0, 0.04),
+        (0.107, 0, 0.02),
+        (2.900, 0, 376.2),
+    ),
+    ("Styblinski-Tang", 5): (
+        (0.000, 2, 0.6),
+        (14.137, 1, 0.1),
+        (0.003, 0, 0.04),
+        (0.000, 3, 0.02),
+        (0.138, 0, 20.1),
+    ),
+    ("Griewank", 5): (
+        (0.061, 0, 0.4),
+        (0.096, 0, 0.2),
+        (0.381, 0, 0.04),
+        (0.011, 0, 0.02),
+        (0.104, 0, 424.8),
+    ),
+}
+"""The five methods at one budget of 500 evaluations, by problem and dimension."""
+
+
+def draw_small_budget(foreground: str):
+    """Draw what each method reaches, and costs, when evaluations are scarce."""
+    colours = series(foreground)
+    problems = ("Rastrigin", "Ackley", "Styblinski-Tang", "Griewank")
+    figure, axes_grid = plt.subplots(2, 2, figsize=(10.5, 5.8), sharex="col")
+    positions = arange(len(problems))
+    width = 0.16
+    for column, dimension in enumerate((2, 5)):
+        gaps_axes = axes_grid[0][column]
+        cost_axes = axes_grid[1][column]
+        for index, label in enumerate(METHOD_LABELS):
+            offset = (index - 2) * width
+            gaps = [SMALL_BUDGET[p, dimension][index][0] for p in problems]
+            reached = [SMALL_BUDGET[p, dimension][index][1] for p in problems]
+            seconds = [SMALL_BUDGET[p, dimension][index][2] for p in problems]
+            bars = gaps_axes.bar(
+                positions + offset,
+                gaps,
+                width * 0.88,
+                color=colours[index],
+                label=label,
+            )
+            # A mark under the axis per starting point reaching the optimum, so
+            # that "solved" is not read off a bar of height zero. It is pinned to
+            # the axis in its fraction, the symlog scale having no useful
+            # coordinate below zero.
+            for bar, count in zip(bars, reached, strict=True):
+                if count:
+                    gaps_axes.annotate(
+                        "\u25cf" * count,
+                        (bar.get_x() + bar.get_width() / 2, 0.0),
+                        xycoords=("data", "axes fraction"),
+                        xytext=(0, -9),
+                        textcoords="offset points",
+                        ha="center",
+                        va="top",
+                        fontsize=4.5,
+                        color=colours[index],
+                        annotation_clip=False,
+                    )
+
+            cost_axes.bar(
+                positions + offset,
+                seconds,
+                width * 0.88,
+                color=colours[index],
+                label=label,
+            )
+
+        # The gaps span zero to seventeen, so a linear axis hides every
+        # near-solved cell; symlog keeps zero at the baseline and compresses the
+        # tail. The dots below the axis carry "solved" on their own.
+        gaps_axes.set_yscale("symlog", linthresh=0.01, linscale=0.4)
+        gaps_axes.set_ylim(bottom=0.0)
+        gaps_axes.set_title(f"{dimension} variables", fontsize=10)
+        gaps_axes.tick_params(labelbottom=False)
+        cost_axes.set_yscale("log")
+        cost_axes.set_xticks(positions)
+        cost_axes.set_xticklabels(problems, rotation=20, ha="right", fontsize=8)
+        if column == 0:
+            gaps_axes.set_ylabel("distance to the optimum")
+            cost_axes.set_ylabel("seconds per run")
+
+    axes_grid[0][0].legend(
+        ncols=5, fontsize=8, loc="lower center", bbox_to_anchor=(1.06, 1.12)
+    )
+    figure.suptitle(
+        "One budget of 500 evaluations: what each method reaches, and what it "
+        "costs to run.\nA dot below the axis per starting point reaching the "
+        "optimum; the cost of an evaluation itself is not counted.",
+        fontsize=9.5,
+        y=1.10,
+    )
+    figure.tight_layout()
+    return figure
+
+
 def draw_density(foreground: str):  # noqa: ARG001
     """Draw what the subdivision density does at five variables."""
     figure, axes = plt.subplots(figsize=(7.2, 3.4))
@@ -1093,6 +1266,7 @@ FIGURES = {
     "results": (draw_results, "svg"),
     "extensions": (draw_extensions, "svg"),
     "density": (draw_density, "svg"),
+    "small_budget": (draw_small_budget, "svg"),
     "encodings": (draw_encodings, "svg"),
 }
 """The figures, by name, with the format each is written in."""

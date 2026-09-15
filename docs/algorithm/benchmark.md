@@ -141,6 +141,21 @@ median distance to the optimum and the number of starting points reaching it.
 | Styblinski-Tang | 5 | $0.00$ · 2/3 · 458 | $14.14$ · 1/3 | $0.003$ | $0.00$ · **3/3** | $0.14$ · 219‡ |
 | Griewank | 5 | $0.061$ | $0.096$ | $0.381$ | **$0.011$** | $0.104$ |
 
+```{image} ../_static/figures/small_budget.svg
+:class: only-light
+:alt: What each method reaches at 500 evaluations, and what it costs to run
+```
+
+```{image} ../_static/figures/small_budget-dark.svg
+:class: only-dark
+:alt: What each method reaches at 500 evaluations, and what it costs to run
+```
+
+The lower row is the caveat the upper one cannot show: the distance to the
+optimum is measured in evaluations, and EGO's own time per run is two orders of
+magnitude above every other method's. On an objective costing minutes that row
+vanishes; on these it decides.
+
 ‡ EGO stopped on its own criterion, after $29$ and $219$ evaluations of the
 $500$ it was allowed: its expected improvement collapses once the process models
 the landscape. Every other cell of the table spent its whole budget.

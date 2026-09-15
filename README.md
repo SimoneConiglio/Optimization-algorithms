@@ -33,44 +33,96 @@ Python 3.10 to 3.13. This also installs GEMSEO and
 
 | Page | Contents |
 |------|----------|
-| [Methodology](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html) | motivation, equations, convexification |
-| [Implementation](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/implementation.html) | the building blocks and their pitfalls |
-| [Usage](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/usage.html) | how to build a GEMSEO scenario |
-| [Benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html) | measured results against enumeration |
+| [Methodology](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html) | the bi-level problem, the cuts, the trust region, the constructions |
+| [Implementation](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/implementation.html) | the layers, the building blocks and their pitfalls |
+| [Usage](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/usage.html) | setting up each construction, and applying them to a new problem |
+| [Results](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html) | what is measured, against enumeration and four baselines |
+| [Conclusion](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/conclusion.html) | what is established, what is not, and where it can go |
 
 ## What it does
 
-The package is a **GEMSEO plugin**: its algorithms register themselves in the
-GEMSEO factories and are usable wherever a GEMSEO algorithm name is expected.
+The package is a **GEMSEO plugin** implementing the **box-subdivision outer
+approximation**, a bi-level method for multimodal non-linear problems. The design
+space is cut into a Cartesian grid of boxes, which turns the choice of a region
+into a categorical variable: a mixed-integer master decides which box to look
+into from the cuts of the boxes already solved, and a local solver does the rest
+inside it. Exploration and local exploitation stay in two distinct levels.
 
-It implements the **box-subdivision outer approximation**, a bi-level method for
-multimodal non-linear problems. Each design variable is split into subdivisions,
-whose Cartesian product defines boxes. A MILP master decides which box to look
-into, and a local NLP solves the original problem inside it, so the exploration
-of the design space and its local exploitation stay in two distinct levels.
+```python
+from gemseo_box_subdivision import BoxSubdivisionScenario
 
-On the Rastrigin function in two dimensions subdivided into 100 boxes, it reaches
-the global optimum after solving about 20 boxes, roughly five times cheaper than
-solving all of them, and on Styblinski-Tang in five dimensions it does so for
-three to five times fewer evaluations than multistart, CMA-ES or DIRECT.
+scenario = BoxSubdivisionScenario(
+    [objective_discipline], "f", design_space, n_subdivisions=10
+)
+scenario.execute()
+```
+
+The scenario owns the assembly, which is a set of invariants rather than a set of
+choices: chaining the mapping before the objective, building the design space
+from the same subdivision, naming the variables the master optimizes over,
+selecting the formulation, and sizing the trust region. What it leaves to you is
+what the measurements say decides a run.
+
+## What is measured
+
+On Rastrigin in two dimensions over $100$ boxes it reaches the optimum after
+solving twenty to thirty-six of them, about three times cheaper than solving all
+of them. In five dimensions, with ten subdivisions per variable, it reaches the
+optimum from **every starting point** for some $1900$ evaluations, which no
+baseline here does at any budget tried.
 
 The subdivision has to **resolve the basins** of the landscape, and it can afford
 to: the master grows with the one-hot binaries, not with the boxes, so five
 variables subdivided ten times each is a hundred thousand boxes and only fifty
-binaries. At that density, and with the trust region of the master sized to the
-design space, Rastrigin in five dimensions is solved, which none of the three
-baselines does. Where the subdivision does not resolve the basins, an evolution
-strategy does better. The
-[benchmark](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html)
-reports both sides.
+binaries. That is the ceiling; the floor is the spacing of the basins, and
+refining past them degrades the result rather than merely costing more.
 
-**Warning.** The master's two guards against non-convexity are both off by
-default in GEMSEO, which makes the outer-approximation cuts invalid on a
-multimodal problem: the master converges after two or three sub-problems and
-reports success far from the optimum. Set one of them, `adapt=True` with a
-convexity margin `min_dfk` scaled to the objective, or a
-`convexification_constant` alone, never both. See
-[Convexification](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/methodology.html#convexification).
+Where the subdivision does not resolve the basins, other methods do better. At a
+small budget, the regime this method targets, **Bayesian optimization explores
+the hard multimodal cases better than it does**, at a hundred times its cost in
+its own time. The
+[results](https://simoneconiglio.github.io/gemseo-box-subdivision/algorithm/benchmark.html) report both sides.
+
+## Two settings decide a run
+
+Neither has a default that transfers between problems.
+
+```python
+from gemseo_box_subdivision import BoxSubdivisionSettings
+
+BoxSubdivisionSettings(
+    convexity_margin=80.0,  # absolute, in the units of *your* objective
+    trust_region_radius=2,  # in components changed, and small
+)
+```
+
+`convexity_margin` guards the outer-approximation cuts against the non-convexity
+of a multimodal problem. Left unguarded, as GEMSEO's master is by default, the
+cuts are invalid: the master converges after two or three sub-problems and
+reports success far from the optimum. The settings pick **one** of the two
+mechanisms and switch the other off, since measuring both at once measures
+neither.
+
+`trust_region_radius` counts the components a candidate box may change, every
+subdivision being weighed alike. Keep it small: widening it to the diameter of
+the design space loses Rastrigin at five variables, and removing the region is
+worse still.
+
+## Beyond a flat subdivision
+
+The same entry point covers the constructions, each answering one reason for a
+flat subdivision to be out of reach:
+
+```python
+# Subdivide the variables the objective is multimodal in, at a density each.
+BoxSubdivisionScenario([d], "f", space, n_subdivisions={"x_1": 10, "x_2": 4})
+
+# A resolution of 4 ** 2 per component, on 4 * 2 binaries per variable.
+BoxSubdivisionScenario([d], "f", space, n_subdivisions=4, levels=2)
+```
+
+and `refine_deep`, `refine_two_levels` and `refine_frontier` build hierarchies
+that refine a box rather than subdividing finely.
 
 ## Development
 
